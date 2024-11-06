@@ -65,25 +65,39 @@ Python & Local Database:
 
 audit-rpa-app/
 ├── app/                    # Main application code (Flask/Django)
+│   ├── modules/          
+│   │   ├── auth/
+│   │   │   ├── views.py
+│   │   │   ├── models.py
+│   │   │   └── forms.py  
+│   │   ├── dashboard/
+│   │   │   └── ...
+│   │   └── ...
 │   ├── static/
 │   │   ├── css/
 │   │   │   ├── style.css           
 │   │   │   ├── components.css      
 │   │   │   └── dashboard.css      
 │   │   ├── js/         
-│   │   │   └── script.js           
+│   │   │   └── script.js        
 │   │   ├── images/
 │   │   │   ├── favicon.ico        
 │   │   │   └── background.jpg     
 │   │   └── data/                    
 │   │       └── sampleData.json
 │   ├── templates/
-│   │   ├── base.html 
+│   │   ├── login.html 
+│   │   ├── register.html 
+│   │   ├── dashboard.html 
+│   │   ├── recover.html 
 │   │   └── index.html 
-│   ├── models.py
-│   └── views.py
-├── rpa_workflows/          
+│   ├── __init__.py 
+│   └── config.py           # Configuration management  
+├── rpaWorkflows/          
 │   ├── bienesRentas/
+│   │   ├── tasks/          # Individual RPA tasks
+│   │   ├── utils/          # Helper functions and utilities
+│   │   └── main.py         # Workflow entry point
 │   ├── declaracionConflictos/
 │   ├── lineaTransparencia/
 │   ├── accessSAP/
@@ -97,8 +111,18 @@ audit-rpa-app/
 │       ├── generateReport.py 
 │       ├── distributeReport.py 
 │       └── main.py 
-├── database/               # Local database (e.g., sql.connector)
-│   └── ...
-├── tests/                  # Unit and integration tests
+├── database/               #sql.connector
+│   ├── __init__.py
+│   ├── dbConnection.py
+│   └── models.py
+├── tests/ 
+│   ├── rpaTests/
+│   └── appTests/   
+├── config/
+│   ├── development.env     # Environment-specific settings
+│   ├── production.env
+│   └── testing.env             
 ├── requirements.txt
-└── ...
+├── logs/                   # Directory for log files
+├── .gitignore
+└── run.py
