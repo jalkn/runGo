@@ -11,11 +11,15 @@
 </head>
 
 <body>
+
+  <div class="item">
+    <a href="./home.html"><i class="fa fa-eye"></i> test </a>
+  </div>
+
   <div>
     <a href="{{ url_for('login') }}"><i class="logo" id="logo"></i></a>
   </div>
 
-  <!-- mostrar un mensaje de error al usuario -->
   {% if error %}
       <p style="color: red;">{{ error }}</p>
   {% endif %}
