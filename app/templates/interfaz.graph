@@ -8,7 +8,7 @@ graph TD
     B --> G[Configuración]
 
     C --> C1[Registro Personal]
-    C --> C2[Declaración Bienes&Rentas]
+    C --> C2[Declaración BienesRentas]
     C --> C3[Conflictos Interés]
     
     D --> D1[Línea Transparencia]
