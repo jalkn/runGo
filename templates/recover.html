@@ -4,7 +4,7 @@
 <head>
       <meta charset="UTF-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>A R P A</title>
+      <title>Recuperar contrasena</title>
       <link rel="shortcut icon" href="../static/logo.png" type="image/x-icon">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
       <link rel="stylesheet" href="../static/style.css">
@@ -16,28 +16,24 @@
   </div>
 
   <!-- mostrar un mensaje de error al usuario -->
-  {% if error %}
-      <p style="color: red;">{{ error }}</p>
+  {% if mensaje %}
+      <p>{{ mensaje }}</p>
   {% endif %}
 
 <div class="container" id="container">
   <div class="form">
     <form method="post">
       <div class="input-group">
-        <i class="fa fa-user"></i>
-        <input type="email" id="correo" name="correo" placeholder="Usuario" required autofocus >
+        <i class="fa fa-envelope"></i>
+        <input type="email" id="correo" name="correo" placeholder="Correo" required>
       </div>
       <div class="input-group">
         <i class="fa fa-lock"></i>
-        <input type="password" id="contrasena" name="contrasena" placeholder="Contraseña" required>
+        <input type="submit" value="Recuperar contraseña">
       </div>
-      <button type="submit"><i class="fa fa-sign-in"></i> Ingresar</button>
     </form>
     <div class="item">
-      <a href="{{ url_for('registrar') }}"><i class="fa fa-edit"></i> Registrarse</a>
-    </div>
-    <div class="item">
-      <a href="{{ url_for('recuperar') }}"><i class="fa fa-key"></i> Recuperar contraseña</a>
+      <a href="{{ url_for('login') }}"><i class="fa fa-edit"></i>Ingresar</a>
     </div>
   </div>
 </div>
