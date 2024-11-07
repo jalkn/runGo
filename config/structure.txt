@@ -64,7 +64,7 @@ audit-rpa-app/
 Python & Local Database:
 
 audit-rpa-app/
-├── app/                    # Main application code (Flask/Django)
+├── app/                        # Main application code (Flask/Django)
 │   ├── modules/          
 │   │   ├── auth/
 │   │   │   ├── views.py
@@ -92,12 +92,12 @@ audit-rpa-app/
 │   │   ├── recover.html 
 │   │   └── index.html 
 │   ├── __init__.py 
-│   └── config.py           # Configuration management  
+│   └── config.py               # Management  
 ├── rpaWorkflows/          
 │   ├── bienesRentas/
-│   │   ├── tasks/          # Individual RPA tasks
-│   │   ├── utils/          # Helper functions and utilities
-│   │   └── main.py         # Workflow entry point
+│   │   ├── tasks/              # RPA tasks
+│   │   ├── utils/              # Help
+│   │   └── main.py             # Workflow entry point
 │   ├── declaracionConflictos/
 │   ├── lineaTransparencia/
 │   ├── accessSAP/
@@ -111,7 +111,7 @@ audit-rpa-app/
 │       ├── generateReport.py 
 │       ├── distributeReport.py 
 │       └── main.py 
-├── database/               #sql.connector
+├── database/                   #sql.connector
 │   ├── __init__.py
 │   ├── dbConnection.py
 │   └── models.py
@@ -119,10 +119,11 @@ audit-rpa-app/
 │   ├── rpaTests/
 │   └── appTests/   
 ├── config/
-│   ├── development.env     # Environment-specific settings
+│   ├── development.env         # Environment settings
 │   ├── production.env
 │   └── testing.env             
 ├── requirements.txt
-├── logs/                   # Directory for log files
+├── logs/                       
+# Directory for log files
 ├── .gitignore
 └── run.py
