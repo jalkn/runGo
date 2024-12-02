@@ -37,6 +37,42 @@ Los beneficios clave de utilizar este RPA son:
 * **Informes automatizados:** Genera informes detallados y fáciles de interpretar.
 * **Escalabilidad:** Se puede adaptar fácilmente para auditar diferentes tipos de sitios web.
 
+## Estructura de archivos
+```
+arpa/
+├── src/
+│   ├── db.py
+│   ├── controllers.py
+│   └── models.py
+├── static/
+│   ├── css/
+│   │   ├── style.css
+│   │   ├── styleIN.css
+│   │   ├── styleData.css
+│   │   ├── file.css
+│   │   ├── chat.css
+│   │   └── favicon.png
+│   ├── js/
+│   │   └── script.css
+│   ├── upload/
+│   │   └── goods.xlsx
+│   ├── download/
+│   │   └── values.xlsx
+│   └── img/
+│       └── favicon.png
+├── templates/
+│   ├── login.html
+│   ├── register.html
+│   ├── dashboard.html
+│   └── user.py
+├── .git
+├── .venv
+├── .env
+├── .gitignore
+├── README.md
+└── app.py
+```
+
 ## Capturas de Pantalla
 
 <table>
