@@ -1,15 +1,12 @@
 import flask as fk
 import waitress as wt
 import werkzeug.utils as wk
-import mysql.connector as sql
 import os
 import dotenv as dt
 import bcrypt as bc
 import secrets as sc
-import google.cloud as ai
 import pandas as pd
-import io
-import re
+from src.db import getDBconnection
 
 #app set
 dt.load_dotenv()
@@ -20,24 +17,6 @@ app.secret_key = os.getenv("SECRET_KEY")
 if "SECRET_KEY" not in os.environ:
        secret_key = sc.token_hex(32)
        os.environ["SECRET_KEY"] = secret_key
-       
-AICHAT = os.environ.get("GOOGLE_API_KEY")
-if AICHAT is None:
-    raise ValueError("aichat not set.")
-
-#DB set
-def getDBconnection():
-    try:
-        arpa = sql.connect(
-            host=os.getenv("DB_HOST"),
-            user=os.getenv("DB_USER"),
-            password=os.getenv("DB_PASSWORD"),
-            database=os.getenv("DB_NAME")
-        )
-        return arpa
-    except sql.Error as err:
-        print('Error de conexión a la base de datos', err)
-        return None
 
 #Controllers set
 #register
@@ -233,41 +212,6 @@ def chat():
        return fk.render_template('chat.html')
     else:
        return fk.redirect(fk.url_for('login'))
-   
-@app.route("/aichat", methods=["POST"])
-def aichat():
-    user_message = fk.request.form.get("user_message")
-
-    headers = {
-        "Content-Type": "application/json",
-        "Authorization": f"Bearer {AICHAT}" 
-    }
-
-    request_body = {
-        "queryInput": {
-            "text": {
-                "text": user_message
-            }
-        }
-    }
-
-    try:
-        response = fk.requests.post(AICHAT, headers=headers, json=request_body)
-        response.raise_for_status()  
-        response_json = response.json()
-        bot_message = response_json["queryResult"]["fulfillmentText"] 
-
-    except fk.requests.exceptions.RequestException as e:
-        print(f"Error with Gemini API: {e}")
-        bot_message = "I'm having trouble right now. Please try again later."
-
-
-    messages = fk.session.get('messages', [])
-    messages.append({"role": "user", "content": user_message})
-    messages.append({"role": "assistant", "content": bot_message})
-    fk.session['messages'] = messages
-
-    return fk.jsonify({"messages": messages[-2:]})
 
 @app.route('/logout')
 def logout():
