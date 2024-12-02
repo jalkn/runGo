@@ -30,100 +30,396 @@ audit-rpa-app/
 ├── serverless.yml          # (If using Serverless framework)
 └── ...
 
-Python & Azure:
-
-audit-rpa-app/
-├── api/                    # API (e.g., Azure Functions)
-│   ├── authentication/
-│   ├── audit_logs/
-│   ├── rpa_orchestration/
-│   └── ...
-├── rpa_workflows/          # RPA workflows (potentially stored in Azure Blob Storage)
-│   ├── workflow_1/
-│   ├── workflow_2/
-│   └── ...
-├── frontend/               # Frontend
-│   ├── src/
-│   │   ├── components/
-│   │   ├── services/
-│   │   └── ...
-│   ├── public/
-│   └── ...
-├── infrastructure/         # Infrastructure as Code (ARM templates, Bicep)
-│   ├── api/
-│   ├── functions/
-│   ├── database/
-│   └── ...
-├── model/                  # Python backend (Django/Flask)
-│   ├── audit/
-│   ├── rpa/
-│   └── ...
-├── requirements.txt
-└── ...
-
-Python & Local Database:
-
-audit-rpa-app/
-├── app/                        # Main application code (Flask/Django)
-│   ├── modules/          
-│   │   ├── auth/
-│   │   │   ├── views.py
-│   │   │   ├── models.py
-│   │   │   └── forms.py  
-│   │   ├── dashboard/
-│   │   │   └── ...
-│   │   └── ...
-│   ├── static/
-│   │   ├── css/
-│   │   │   ├── style.css           
-│   │   │   ├── components.css      
-│   │   │   └── dashboard.css      
-│   │   ├── js/         
-│   │   │   └── script.js        
-│   │   ├── images/
-│   │   │   ├── favicon.ico        
-│   │   │   └── background.jpg     
-│   │   └── data/                    
-│   │       └── sampleData.json
-│   ├── templates/
-│   │   ├── login.html 
-│   │   ├── register.html 
-│   │   ├── dashboard.html 
-│   │   ├── recover.html 
-│   │   └── index.html 
-│   ├── __init__.py 
-│   └── config.py               # Management  
-├── rpaWorkflows/          
-│   ├── bienesRentas/
-│   │   ├── tasks/              # RPA tasks
-│   │   ├── utils/              # Help
-│   │   └── main.py             # Workflow entry point
-│   ├── declaracionConflictos/
-│   ├── lineaTransparencia/
-│   ├── accessSAP/
-│   ├── successFactor/
-│   ├── persons/
-│   │   ├── createAccounts.py 
-│   │   ├── sendEmail.py 
-│   │   └── main.py 
-│   └── auditReport/
-│       ├── gatherData.py 
-│       ├── generateReport.py 
-│       ├── distributeReport.py 
-│       └── main.py 
-├── database/                   #sql.connector
+# Project structure
+app/
+├── __init__.py
+├── static/
+│   ├── style.css
+│   ├── styleIN.css
+│   └── favicon.png
+├── templates/
+│   ├── login.html
+│   ├── register.html
+│   ├── base.html
+│   └── dashboard.html
+├── models/
 │   ├── __init__.py
-│   ├── dbConnection.py
-│   └── models.py
-├── tests/ 
-│   ├── rpaTests/
-│   └── appTests/   
-├── config/
-│   ├── development.env         # Environment settings
-│   ├── production.env
-│   └── testing.env             
-├── requirements.txt
-├── logs/                       
-# Directory for log files
-├── .gitignore
+│   └── user.py
+├── routes/
+│   ├── __init__.py
+│   ├── auth.py
+│   └── main.py
+├── utils/
+│   ├── __init__.py
+│   └── db.py
+├── config.py
 └── run.py
+
+# config.py
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
+class Config:
+    SECRET_KEY = os.getenv('SECRET_KEY')
+    MYSQL_HOST = os.getenv('DB_HOST')
+    MYSQL_USER = os.getenv('DB_USER')
+    MYSQL_PASSWORD = os.getenv('DB_PASSWORD')
+    MYSQL_DB = os.getenv('DB_NAME')
+
+# app/__init__.py
+from flask import Flask
+from flask_login import LoginManager
+from .utils.db import get_db
+from .config import Config
+
+login_manager = LoginManager()
+
+def create_app():
+    app = Flask(__name__)
+    app.config.from_object(Config)
+    
+    login_manager.init_app(app)
+    login_manager.login_view = 'auth.login'
+    
+    # Register blueprints
+    from .routes.auth import auth_bp
+    from .routes.main import main_bp
+    
+    app.register_blueprint(auth_bp)
+    app.register_blueprint(main_bp)
+    
+    return app
+
+# app/utils/db.py
+import mysql.connector
+from flask import current_app, g
+
+def get_db():
+    if 'db' not in g:
+        g.db = mysql.connector.connect(
+            host=current_app.config['MYSQL_HOST'],
+            user=current_app.config['MYSQL_USER'],
+            password=current_app.config['MYSQL_PASSWORD'],
+            database=current_app.config['MYSQL_DB']
+        )
+        g.cursor = g.db.cursor(dictionary=True)
+    return g.db, g.cursor
+
+def close_db(e=None):
+    db = g.pop('db', None)
+    if db is not None:
+        db.close()
+
+# app/models/user.py
+from flask_login import UserMixin
+from werkzeug.security import generate_password_hash, check_password_hash
+from ..utils.db import get_db
+
+class User(UserMixin):
+    def __init__(self, id, nombre, apellido, cedula, correo, cargo):
+        self.id = id
+        self.nombre = nombre
+        self.apellido = apellido
+        self.cedula = cedula
+        self.correo = correo
+        self.cargo = cargo
+
+    @staticmethod
+    def get_by_id(user_id):
+        db, cursor = get_db()
+        cursor.execute('SELECT * FROM users WHERE id = %s', (user_id,))
+        user_data = cursor.fetchone()
+        if user_data:
+            return User(
+                id=user_data['id'],
+                nombre=user_data['nombre'],
+                apellido=user_data['apellido'],
+                cedula=user_data['cedula'],
+                correo=user_data['correo'],
+                cargo=user_data['cargo']
+            )
+        return None
+
+    @staticmethod
+    def get_by_email(email):
+        db, cursor = get_db()
+        cursor.execute('SELECT * FROM users WHERE correo = %s', (email,))
+        user_data = cursor.fetchone()
+        if user_data:
+            return User(
+                id=user_data['id'],
+                nombre=user_data['nombre'],
+                apellido=user_data['apellido'],
+                cedula=user_data['cedula'],
+                correo=user_data['correo'],
+                cargo=user_data['cargo']
+            )
+        return None
+
+# app/routes/auth.py
+from flask import Blueprint, render_template, request, redirect, url_for, flash
+from flask_login import login_user, logout_user, login_required
+from werkzeug.security import generate_password_hash, check_password_hash
+from ..models.user import User
+from ..utils.db import get_db
+
+auth_bp = Blueprint('auth', __name__)
+
+@auth_bp.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        email = request.form.get('usuario')
+        password = request.form.get('contrasena')
+        
+        db, cursor = get_db()
+        cursor.execute('SELECT * FROM users WHERE correo = %s', (email,))
+        user_data = cursor.fetchone()
+        
+        if user_data and check_password_hash(user_data['password'], password):
+            user = User(
+                id=user_data['id'],
+                nombre=user_data['nombre'],
+                apellido=user_data['apellido'],
+                cedula=user_data['cedula'],
+                correo=user_data['correo'],
+                cargo=user_data['cargo']
+            )
+            login_user(user)
+            return redirect(url_for('main.dashboard'))
+            
+        flash('Invalid email or password')
+    return render_template('auth/login.html')
+
+@auth_bp.route('/register', methods=['GET', 'POST'])
+def register():
+    if request.method == 'POST':
+        nombre = request.form.get('nombre')
+        apellido = request.form.get('apellido')
+        cedula = request.form.get('cedula')
+        correo = request.form.get('correo')
+        cargo = request.form.get('cargo')
+        contrasena = request.form.get('contrasena')
+        conf_contrasena = request.form.get('confTrasena')
+        
+        if contrasena != conf_contrasena:
+            flash('Passwords do not match')
+            return redirect(url_for('auth.register'))
+            
+        db, cursor = get_db()
+        try:
+            cursor.execute('''
+                INSERT INTO users (nombre, apellido, cedula, correo, cargo, password)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            ''', (
+                nombre, 
+                apellido, 
+                cedula, 
+                correo, 
+                cargo, 
+                generate_password_hash(contrasena)
+            ))
+            db.commit()
+            return redirect(url_for('auth.login'))
+        except mysql.connector.Error as err:
+            flash('Registration failed')
+            
+    return render_template('auth/register.html')
+
+# run.py
+from waitress import serve
+from app import create_app
+
+app = create_app()
+
+if __name__ == '__main__':
+    serve(app, host='0.0.0.0', port=8080)
+
+
+
+# templates/base.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} - ARPA</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    {% block content %}{% endblock %}
+</body>
+</html>
+
+# templates/auth/login.html
+{% extends "base.html" %}
+
+{% block title %}Login{% endblock %}
+
+{% block content %}
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="error-message">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="test">
+        <a href="{{ url_for('main.dashboard') }}"><i class="fa fa-eye"></i>demo</a>
+    </div>
+
+    <div class="item">
+        <a href="{{ url_for('auth.login') }}"><i class="logo" id="logo"></i></a>
+    </div>
+
+    <div class="container" id="container">
+        <div class="form">
+            <form method="POST">
+                <div class="input-group">
+                    <input type="text" id="usuario" name="usuario" placeholder="Correo" required>
+                </div>
+
+                <div class="input-group">
+                    <input type="password" id="contrasena" name="contrasena" placeholder="Contraseña" required>
+                </div>
+                
+                <div class="input-group">
+                    <button type="submit">
+                        <i class="fa fa-sign-in"></i> Ingresar
+                    </button>
+                </div>
+            </form>
+
+            <div class="input-group">
+                <a href="{{ url_for('auth.register') }}">
+                    <button type="button">
+                        <i class="fa fa-edit"></i> Registrarse
+                    </button>
+                </a>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+# templates/auth/register.html
+{% extends "base.html" %}
+
+{% block title %}Register{% endblock %}
+
+{% block content %}
+    {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            {% for message in messages %}
+                <div class="error-message">{{ message }}</div>
+            {% endfor %}
+        {% endif %}
+    {% endwith %}
+
+    <div class="item">
+        <a href="{{ url_for('auth.login') }}"><i class="logo" id="logo"></i></a>
+    </div>
+
+    <div class="container" id="container">
+        <div class="form">
+            <form method="POST">
+                <div class="input-group">
+                    <input type="text" id="nombre" name="nombre" placeholder="Nombre" required autofocus>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="apellido" name="apellido" placeholder="Apellido" required>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="cedula" name="cedula" placeholder="Cédula" required>
+                </div>
+                <div class="input-group">
+                    <input type="email" id="correo" name="correo" placeholder="Correo" required>
+                </div>
+                <div class="input-group">
+                    <input type="text" id="cargo" name="cargo" placeholder="Cargo" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="contrasena" name="contrasena" placeholder="Contraseña" required>
+                </div>
+                <div class="input-group">
+                    <input type="password" id="confTrasena" name="confTrasena" placeholder="Confirmar contraseña" required>
+                </div>
+
+                <div class="input-group">
+                    <button type="submit">
+                        <i class="fa fa-edit"></i> Registrarse
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+{% endblock %}
+
+# templates/dashboard.html
+{% extends "base.html" %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/styleIN.css') }}">
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+{% endblock %}
+
+{% block content %}
+<div class="topnav-container">
+    <div>
+        <a href="{{ url_for('main.dashboard') }}" class="logoIN">
+            <div class="nomPag">Dashboard</div>
+        </a>
+    </div>
+    <div class="topnav">
+        <a href="{{ url_for('main.dashboard') }}"><i class="fa fa-bar-chart" style="color: #0b00a2;"></i></a>
+        <a href="{{ url_for('auth.logout') }}"><i class="fa fa-sign-out"></i></a>
+    </div>
+</div>
+
+<div class="row">
+    <div class="column">
+        <div class="card">
+            <a href="{{ url_for('main.personas') }}"><i class="fa fa-id-card"><span class="titles">Personas</span></i>368</a>
+        </div>
+    </div>
+    
+    <div class="column">
+        <div class="card">
+            <a href="{{ url_for('main.auditorias') }}"><i class="fa fa-book"><span class="titles">Auditorías</span></i>50</a>
+        </div>
+    </div>
+
+    <div class="column">
+        <div class="card">
+            <a href="{{ url_for('main.informes') }}"><i class="fa fa-file-text-o"><span class="titles">Informes</span></i>12</a>
+        </div>
+    </div>
+    
+    <div class="column">
+        <div class="card">
+            <a href="{{ url_for('main.alertas') }}"><i class="fa fa-exclamation-circle" style="color: red;"><span class="titles" style="color: red;">Alertas</span></i>15</a>
+        </div>
+    </div>
+
+    <div class="column">
+        <div class="card">
+            <a href="{{ url_for('main.upload') }}" style="color: green;"><i class="fa fa-file-o"><span class="titles">Analizar Archivo</span></i><i class="fa fa-upload" style="color: #0b00a2;"></i></a>
+        </div>
+    </div>
+
+    <div class="column">
+        <div class="card">
+            <a href="{{ url_for('main.chat') }}"><i class="fa fa-comment-o"><span class="titles">Preguntar Arpa</span></i><i class="fa fa-keyboard-o"></i></a>
+        </div>
+    </div>
+</div>
+
+{% if current_user.is_authenticated %}
+    <p>Welcome, {{ current_user.nombre }}!</p>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,1157 @@
+I want to change this framework to python with flask, waitress and sql.connector:
+
+app/
+├── public/             
+│   └── style.css
+├── views/  
+│   ├── alerts.php
+│   ├── audits.php
+│   ├── chat.php
+│   ├── filesData.php
+│   ├── persons.php                             
+│   ├── login.php       
+│   ├── register.php    
+│   ├── recover.php   
+│   ├── dashboard.php   
+│   ├── reports.php
+│   ├── audits.php
+│   ├── goods.php
+│   ├── readFiles.php      
+│   └── filesData.php       
+├── src/   
+│   ├── Audit.php
+│   ├── ExcelFile.php
+│   ├── PDFile.php
+│   ├── WordFile.php
+│   ├── Reports.php
+│   ├── Goods.php
+│   ├── Chat.php           
+│   └── Auth.php            
+├── .gitignore           
+├── .git                 
+├── .env               
+├── README.md            
+├── composer.json       
+├── composer.lock       
+└── index.php  
+
+index.php
+
+<?php
+require_once __DIR__ . '/vendor/autoload.php';
+require_once __DIR__ . '/src/Auth.php';
+
+$dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
+$dotenv->load();
+
+try {
+    $pdo = new PDO("mysql:host=" . $_ENV['DB_HOST'] . ";dbname=" . $_ENV['DB_NAME'], $_ENV['DB_USER'], $_ENV['DB_PASSWORD']);
+    $pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+} catch (PDOException $e) {
+    die("Database connection failed: " . $e->getMessage()); 
+}
+
+$auth = new Auth($pdo);
+session_start();
+
+$requestUri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
+
+switch ($requestUri) {
+    case '/register':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            
+            $nombre = $_POST['nombre'];
+            $apellido = $_POST['apellido'];
+            $cedula = $_POST['cedula'];
+            $correo = $_POST['correo'];
+            $cargo = $_POST['cargo'];
+            $contrasena = $_POST['contrasena'];
+            $confTrasena = $_POST['confTrasena'];
+
+            if ($auth->register($nombre, $apellido, $cedula, $correo, $cargo, $contrasena, $confTrasena)) {
+                header("Location: /login?registered=success"); 
+                exit;
+            } else {
+                $_SESSION['error'] = "Registration failed."; 
+                header("Location: /register"); 
+                exit;
+            }
+        } else {
+            include __DIR__ . '/views/register.php';
+        }
+        break;
+
+
+    case '/login':
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            
+            $username = $_POST['username'];  
+            $password = $_POST['password'];
+            if ($auth->login($username, $password)) {
+                header("Location: /dashboard"); 
+                exit;
+            } else {
+                $_SESSION['error'] = "Login failed."; 
+                header("Location: /login");
+                exit;
+            }
+        } else {
+            include __DIR__ . '/views/login.php'; 
+        }
+        break;
+
+    default:
+        header("Location: /login"); 
+        exit;
+}
+?>
+
+Auth.php
+
+<?php
+class Auth {
+    private $pdo;
+
+    public function __construct(PDO $pdo) {
+        $this->pdo = $pdo;
+        $this->setupDatabase(); 
+    }
+
+    private function setupDatabase() {
+        try {
+            $this->pdo->exec("
+                CREATE TABLE IF NOT EXISTS users (
+                    id INT AUTO_INCREMENT PRIMARY KEY,
+                    nombre VARCHAR(50) NOT NULL,
+                    apellido VARCHAR(50) NOT NULL,
+                    cedula VARCHAR(20) NOT NULL UNIQUE,
+                    correo VARCHAR(100) NOT NULL UNIQUE,
+                    cargo VARCHAR(50) NOT NULL,
+                    password VARCHAR(255) NOT NULL,
+                    creado TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                ) 
+            ");
+        } catch (PDOException $e) {
+            error_log("Error creando la base de datos: " . $e->getMessage());
+            throw new Exception("Tabla no creada");
+        }
+    }
+
+    public function login($username, $password) {
+        try {
+            $stmt = $this->pdo->prepare("SELECT * FROM users WHERE correo = :correo");
+            $stmt->execute(['correo' => $username]);
+            $user = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if (!$user || !password_verify($password, $user['password'])) {
+                error_log("Ingreso fallido " . $username);
+                return false;
+            }
+
+            session_regenerate_id(true);
+            $_SESSION['user_id'] = $user['id'];
+            $_SESSION['user_email'] = $user['correo'];
+            return true;
+        } catch (PDOException $e) {
+            error_log("Error de ingreso: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function register($nombre, $apellido, $cedula, $correo, $cargo, $contrasena, $confTrasena) {
+        
+        if ($contrasena !== $confTrasena) {
+            error_log("Las contraseñas no coinciden");
+            return false;
+        }
+
+        if (empty($nombre) || empty($apellido) || empty($cedula) || 
+            empty($correo) || empty($cargo) || empty($contrasena)) {
+            error_log("Campos sin llenar");
+            return false;
+        }
+
+        if (!filter_var($correo, FILTER_VALIDATE_EMAIL)) {
+            error_log("Tipo email incorrecto " . $correo);
+            return false;
+        }
+
+        $hashedPassword = password_hash($contrasena, PASSWORD_DEFAULT);
+
+        try {
+            $stmt = $this->pdo->prepare("
+                INSERT INTO users (
+                    nombre, apellido, cedula, correo, cargo, password
+                ) VALUES (
+                    :nombre, :apellido, :cedula, :correo, :cargo, :password
+                )
+            ");
+
+            $result = $stmt->execute([
+                'nombre' => $nombre,
+                'apellido' => $apellido,
+                'cedula' => $cedula,
+                'correo' => $correo,
+                'cargo' => $cargo,
+                'password' => $hashedPassword
+            ]);
+
+            if ($result) {
+                error_log("Registro exitoso: " . $correo);
+            }
+            return $result;
+
+        } catch (PDOException $e) {
+            if ($e->getCode() == 23000) { 
+                error_log("Registro duplicados: " . $correo);
+                return false;
+            }
+            error_log("Error durante el registro: " . $e->getMessage());
+            return false;
+        }
+    }
+
+    public function isLoggedIn() {
+        return isset($_SESSION['user_id']);
+    }
+}
+
+login.php
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../public/style.css">
+</head>
+<body>
+
+    <?php if (isset($error_message)): ?>
+        <div style="color: red;"><?php echo $error_message; ?></div>
+    <?php endif; ?>
+
+    <div class="test" method="POST" action="/login">
+        <a href="/dashboard"><i class="fa fa-eye"></i>demo</a>
+    </div>
+
+    <div class="item">
+      <a href="/login"><i class="logo" id="logo"></i></a> </div>
+
+    <div class="container" id="container">
+
+      <div class="form"> 
+
+        <form method="POST" action="/login">
+          <div class="input-group">
+            <input type="text" id="usuario" name="usuario" placeholder="Correo" required >
+          </div>
+
+          <div class="input-group">
+            <input type="password" id="contrasena" name="contrasena" placeholder="Contraseña" required>
+          </div>
+            
+          <div class="input-group">
+            <button type="submit" value="Submit">
+                <i class="fa fa-sign-in"></i> Ingresar
+            </button>
+          </div>
+        </form> 
+
+        <div class="input-group"> 
+          <a href="/register">
+          <button type="button"> 
+              <i class="fa fa-edit"></i> Registrarse
+          </button>
+          </a>
+        </div>
+
+      </div>
+
+    </div>
+</body>
+</html>
+
+register.php
+
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Registrarse</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+  <link rel="stylesheet" href="/public/style.css">
+</head>
+<body>
+  
+  <?php if (isset($_SESSION['error'])): ?>
+      <div class="error-message"><?php echo $_SESSION['error']; ?></div>
+      <?php unset($_SESSION['error']); ?> 
+  <?php endif; ?>
+
+  <div class="item">
+        <a href="/login"><i class="logo" id="logo"></i></a>
+  </div>
+
+  <div class="container" id="container">
+
+    <div class="form">
+
+      <form method="POST" action="/register"> 
+
+        <div class="input-group">
+            <i class=""></i>
+            <input type="text" id="nombre" name="nombre" placeholder="Nombre" required autofocus >
+        </div>
+        <div class="input-group">
+            <i class=""></i>
+            <input type="text" id="apellido" name="apellido" placeholder="Apellido" required>
+        </div>
+        <div class="input-group">
+            <i class=""></i>
+            <input type="text" id="cedula" name="cedula" placeholder="Cédula" required>
+        </div>
+        <div class="input-group">
+            <i class=""></i>
+            <input type="email" id="correo" name="correo" placeholder="Correo" required>
+        </div>
+        <div class="input-group">
+            <i class=""></i>
+        <input type="text" id="cargo" name="cargo" placeholder="Cargo" required>
+        </div>
+        <div class="input-group">
+            <i class=""></i>
+            <input type="password" id="contrasena" name="contrasena" placeholder="Contraseña" required>
+        </div>
+        <div class="input-group">
+            <i class=""></i>
+            <input type="password" id="confTrasena" name="confTrasena" placeholder="Confirmar contraseña" required>
+        </div>
+
+        <div class="input-group">
+            <button type="submit"> <i class="fa fa-edit"></i> Registrarse </button>
+        </div>
+
+      </form>
+
+    </div>
+
+  </div>
+</body>
+</html>
+
+dashboard.php
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A R P A</title>
+    <link rel="shortcut icon" href="/public/img/favicon.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="/public/styleIN.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+<div class="topnav-container">
+      <div>
+        <a href="/dashboard" class="logoIN">
+          <div class="nomPag">Dashboard</div>
+        </a>
+      </div>
+      <div class="topnav">
+        <a href="/dashboard"><i class="fa fa-bar-chart" style="color: #0b00a2;"></i></a>
+        <a href="/logout"><i class="fa fa-sign-out"></i></a>  </div>
+    </div>
+    
+    <div class="row">
+        <div class="column">
+          <div class="card">
+            <a href="./personas.html"><i class="fa fa-id-card"><span class="titles">Personas</span></i>368</a>
+          </div>
+        </div>
+      
+        <div class="column">
+          <div class="card">
+            <a href="./auditorias.html"><i class="fa fa-book"><span class="titles">Auditorías</span></i>50</a>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="card">
+            <a href="./informes.html"><i class="fa fa-file-text-o"><span class="titles">Informes</span></i>12</a>
+          </div>
+        </div>
+        
+        <div class="column">
+          <div class="card">
+            <a href="./alertas.html"><i class="fa fa-exclamation-circle" style="color: red;"><span class="titles" style="color: red;">Alertas</span></i>15</a>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="card">
+            <a href="./upload.html" style="color: green;"><i class="fa fa-file-o"><span class="titles">Analizar Archivo</span></i><i class="fa fa-upload" style="color: #0b00a2;"></i></a>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="card">
+            <a href=""><i class="fa fa-comment-o"><span class="titles">Preguntar Arpa</span></i><i class="fa fa-keyboard-o"></i></a>
+          </div>
+        </div>
+        
+    </div>
+
+    <?php if(isset($user)): ?>
+        <p>Welcome, <?php echo $user['username']; ?>! </p>
+         <!-- Now you can access user data -->
+    <?php endif; ?>
+
+</body>
+</html>
+
+
+
+alerts.php
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A R P A</title>
+    <link rel="shortcut icon" href="/public/img/favicon.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../static/styleIN.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+  <div class="topnav-container">
+      <div>
+        <a href="./dashboard.html" class="logoIN">
+          <div class="nomPag" style="color: red;">Alertas</div>
+        </a>
+      </div>
+      <div class="topnav">
+        <a href="./alerts.html"><i class="fa fa-exclamation-circle" style="color: red;"></i></a>
+        <a href="./dashboard.html"><i class="fa fa-bar-chart"></i></a>
+      </div>
+    </div>
+    
+    <div class="row">
+      
+        <div class="column">
+          <div class="search-container">
+            <i class="fa fa-search"></i>
+            <input type="text" id="entrada" name="search" onkeyup="myFunction()" title="Type in a name" placeholder="Buscar" autofocus>
+          </div>
+        </div>
+
+        <table id="tabla" style="color: red;">
+          <thead class="header">
+            <tr>
+              <th style="width:15%;">ID</th>
+              <th style="width:15%;">Descripcion</th>
+              <th style="width:15%;" class="hidden-on-medium">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>002</td>
+              <td>Informe gastos</td>
+              <td class="hidden-on-medium">En proceso</td>
+            </tr>
+            <tr>
+              <td>003</td>
+              <td>Informe bancos</td>
+              <td class="hidden-on-medium">Enviado</td>
+            </tr>
+            <tr>
+              <td>004</td>
+              <td>Declaracion</td>
+              <td class="hidden-on-medium">Esperando</td>
+            </tr>
+            <tr>
+              <td>005</td>
+              <td>Bienes</td>
+              <td class="hidden-on-medium">Pausado</td>
+            </tr>
+            <tr>
+              <td>006</td>
+              <td>SAP</td>
+              <td class="hidden-on-medium">En proceso</td>
+            </tr>
+            <tr>
+              <td>007</td>
+              <td>Ingresos</td>
+              <td class="hidden-on-medium">Esperando</td>
+            </tr>
+            <tr>
+              <td>008</td>
+              <td>Inversiones</td>
+              <td class="hidden-on-medium">Recibido</td>
+            </tr>
+            <tr>
+              <td>009</td>
+              <td>Patrimonio</td>
+              <td class="hidden-on-medium">Enproceso</td>
+            </tr>
+          </tbody>
+    </div>
+    <script>
+      function myFunction() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("entrada");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("tabla");
+        tr = table.getElementsByTagName("tr");
+        for (i = 0; i < tr.length; i++) {
+          td = tr[i].getElementsByTagName("td")[0];
+          if (td) {
+            txtValue = td.textContent || td.innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+              tr[i].style.display = "";
+            } else {
+              tr[i].style.display = "none";
+            }
+          }       
+        }
+      }
+      </script>
+</body>
+</html>
+
+audits.php
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A R P A</title>
+    <link rel="shortcut icon" href="/public/img/favicon.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../static/styleIN.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+  <div class="topnav-container">
+      <div>
+        <a href="./dashboard.html" class="logoIN">
+          <div class="nomPag">Auditorías</div>
+        </a>
+      </div>
+      <div class="topnav">
+        <a href="./audits.html"><i class="fa fa-book"></i></a>
+        <a href="./dashboard.html"><i class="fa fa-bar-chart"></i></a>
+      </div>
+    </div>
+    
+    <div class="row">
+      <div class="row">
+        <div class="column">
+          <div class="card">
+            <a href="./goods.html"><i class="fa fa-building-o"><span class="titles">Bienes y Rentas</span></i>5</a>
+          </div>
+        </div>
+      
+        <div class="column">
+          <div class="card">
+            <a href=""><i class="fa fa-barcode"><span class="titles">Accesos SAP</span></i>20</a>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="card">
+            <a href=""><i class="fa fa-calculator"><span class="titles">Success Factor</span></i>25</a>
+          </div>
+        </div>
+    </div>
+        <!--
+        <div class="column">
+          <div class="search-container">
+            <i class="fa fa-search"></i>
+            <input type="text" id="entrada" name="search" onkeyup="myFunction()" title="Type in a name" placeholder="Buscar" autofocus>
+          </div>
+        </div>
+        
+        <table id="tabla">
+          <thead class="header">
+            <tr>
+              <th style="width:15%;">ID</th>
+              <th style="width:15%;">Compañía</th>
+              <th style="width:15%;" class="hidden-on-medium">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>002</td>
+              <td>Summa</td>
+              <td class="hidden-on-medium">En proceso</td>
+            </tr>
+            <tr>
+              <td>003</td>
+              <td>Celsia</td>
+              <td class="hidden-on-medium">Enviado</td>
+            </tr>
+            <tr>
+              <td>004</td>
+              <td>Cementos</td>
+              <td class="hidden-on-medium">Esperando</td>
+            </tr>
+            <tr>
+              <td>005</td>
+              <td>Bienes</td>
+              <td class="hidden-on-medium">Pausado</td>
+            </tr>
+            <tr>
+              <td>006</td>
+              <td>SAP</td>
+              <td class="hidden-on-medium">En proceso</td>
+            </tr>
+            <tr>
+              <td>007</td>
+              <td>Ingresos</td>
+              <td class="hidden-on-medium">Esperando</td>
+            </tr>
+            <tr>
+              <td>008</td>
+              <td>Inversiones</td>
+              <td class="hidden-on-medium">Recibido</td>
+            </tr>
+            <tr>
+              <td>009</td>
+              <td>Patrimonio</td>
+              <td class="hidden-on-medium">Enproceso</td>
+            </tr>
+          </tbody>
+          -->
+    </div>
+    <script>
+      function myFunction() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("entrada");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("tabla");
+        tr = table.getElementsByTagName("tr");
+        for (i = 0; i < tr.length; i++) {
+          td = tr[i].getElementsByTagName("td")[0];
+          if (td) {
+            txtValue = td.textContent || td.innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+              tr[i].style.display = "";
+            } else {
+              tr[i].style.display = "none";
+            }
+          }       
+        }
+      }
+      </script>
+</body>
+</html>
+
+chat.php
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>A R P A</title>
+        <link rel="shortcut icon" href="/public/img/favicon.png" type="image/x-icon">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+        <link rel="stylesheet" href="../static/chat.css">
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    </head>
+<body>
+    <div class="topnav-container">
+        <div>
+          <a href="./dashboard.html" class="logoIN">
+            <div class="nomPag">Arpa</div>
+          </a>
+        </div>
+        <div class="topnav">
+          <a href="./chat.html"><i class="fa fa-comment-o"></i></a>
+          <a href="./dashboard.html"><i class="fa fa-bar-chart"></i></a>
+        </div>
+    </div>
+    <div class="input-container">
+        <div class="input-box">
+            <textarea placeholder="Chatea con Arpa" rows="1" autofocus></textarea>
+            <button><i class="fa fa-send"></i></button>
+        </div>
+    </div>
+</body>
+</html>
+
+filesData.php
+
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>A R P A</title>
+        <link rel="shortcut icon" href="/public/img/favicon.png" type="image/x-icon">
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+        <link rel="stylesheet" href="../static/file.css">
+        <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    </head>
+    <body>
+      <div class="topnav-container">
+          <div>
+              <a href="./dashboard.html" class="logoIN">
+            <div class="nomPag">Análisis</div>
+              </a>
+            </div>
+            <div class="topnav">
+              <a href="./readFiles.html"><i class="fa fa-upload"></i></a>
+              <a href="./dashboard.html"><i class="fa fa-bar-chart"></i></a>
+            </div>
+          </div>
+    <div class="dashboard">
+        <div class="header">
+            <h1>Análisis</h1>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-title">Filas</div>
+                <div class="stat-value">1,234</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Valores</div>
+                <div class="stat-value">$847,392</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Valores promedio</div>
+                <div class="stat-value">$686</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-title">Nulos</div>
+                <div class="stat-value">23</div>
+            </div>
+        </div>
+
+        
+
+        <table class="data-table">
+            <thead>
+                <tr>
+                    <th>Mes</th>
+                    <th>Ventas</th>
+                    <th>Ordenes</th>
+                    <th>Valores Promedio</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Enero</td>
+                    <td>$125,430</td>
+                    <td>182</td>
+                    <td>$689</td>
+                </tr>
+                <tr>
+                    <td>Febrero</td>
+                    <td>$138,650</td>
+                    <td>201</td>
+                    <td>$690</td>
+                </tr>
+                <tr>
+                    <td>Marzo</td>
+                    <td>$142,800</td>
+                    <td>208</td>
+                    <td>$687</td>
+                </tr>
+                <tr>
+                    <td>Abril</td>
+                    <td>$156,240</td>
+                    <td>229</td>
+                    <td>$682</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+</body>
+</html>
+
+goods.php
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A R P A</title>
+    <link rel="shortcut icon" href="/public/img/favicon.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../static/styleIN.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+</head>
+<body>
+  <div class="topnav-container">
+      <div>
+        <a href="./dashboard.html" class="logoIN">
+          <div class="nomPag">Auditorías</div>
+        </a>
+      </div>
+      <div class="topnav">
+        <a href="./audits.html"><i class="fa fa-book"></i></a>
+        <a href="./dashboard.html"><i class="fa fa-bar-chart"></i></a>
+      </div>
+    </div>
+    
+    <div class="column">
+      <div class="search-container">
+        <i class="fa fa-search"></i>
+        <input type="text" id="entrada" name="search" onkeyup="myFunction()" title="Type in a name" placeholder="Bienes y Rentas" autofocus>
+      </div>
+    </div>
+    
+      <div class="row">
+        <div class="column">
+          <div class="card">
+            <a href=""><i class="fa fa-building-o"><span class="titles">Patrimonio por persona</span></i></a>
+          </div>
+        </div>
+        <div class="column">
+          <div class="card">
+            <a href=""><i class="fa fa-flag"><span class="titles">Activos por persona</span></i></a>
+          </div>
+        </div>
+        <div class="column">
+          <div class="card">
+            <a href=""><i class="fa fa-bank"><span class="titles">Pasivos por persona</span></i></a>
+          </div>
+        </div>
+        <div class="column">
+          <div class="card">
+            <a href=""><i class="fa fa-money"><span class="titles">Inversiones por persona</span></i></a>
+          </div>
+        </div>
+      </div>
+    
+        <!--
+       
+        
+        <table id="tabla">
+          <thead class="header">
+            <tr>
+              <th style="width:15%;">ID</th>
+              <th style="width:15%;">Compañía</th>
+              <th style="width:15%;" class="hidden-on-medium">Estado</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>002</td>
+              <td>Summa</td>
+              <td class="hidden-on-medium">En proceso</td>
+            </tr>
+            <tr>
+              <td>003</td>
+              <td>Celsia</td>
+              <td class="hidden-on-medium">Enviado</td>
+            </tr>
+            <tr>
+              <td>004</td>
+              <td>Cementos</td>
+              <td class="hidden-on-medium">Esperando</td>
+            </tr>
+            <tr>
+              <td>005</td>
+              <td>Bienes</td>
+              <td class="hidden-on-medium">Pausado</td>
+            </tr>
+            <tr>
+              <td>006</td>
+              <td>SAP</td>
+              <td class="hidden-on-medium">En proceso</td>
+            </tr>
+            <tr>
+              <td>007</td>
+              <td>Ingresos</td>
+              <td class="hidden-on-medium">Esperando</td>
+            </tr>
+            <tr>
+              <td>008</td>
+              <td>Inversiones</td>
+              <td class="hidden-on-medium">Recibido</td>
+            </tr>
+            <tr>
+              <td>009</td>
+              <td>Patrimonio</td>
+              <td class="hidden-on-medium">Enproceso</td>
+            </tr>
+          </tbody>
+          -->
+    </div>
+    
+    <script>
+      function myFunction() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("entrada");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("tabla");
+        tr = table.getElementsByTagName("tr");
+        for (i = 0; i < tr.length; i++) {
+          td = tr[i].getElementsByTagName("td")[0];
+          if (td) {
+            txtValue = td.textContent || td.innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+              tr[i].style.display = "";
+            } else {
+              tr[i].style.display = "none";
+            }
+          }       
+        }
+      }
+      </script>
+</body>
+</html>
+
+persons.php
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A R P A</title>
+    <link rel="shortcut icon" href="/public/img/favicon.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../static/styleIN.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+  <div class="topnav-container">
+      <div>
+        <a href="./dashboard.html" class="logoIN">
+          <div class="nomPag">Personas</div>
+        </a>
+      </div>
+      <div class="topnav">
+        <a href="./persons.html"><i class="fa fa-id-card"></i></a>
+        <a href="./dashboard.html"><i class="fa fa-bar-chart"></i></a>
+        
+      </div>
+    </div>
+    
+    <div class="row">
+      
+        <div class="column">
+          <div class="search-container">
+            <i class="fa fa-search"></i>
+            <input type="text" id="entrada" name="search" onkeyup="myFunction()" title="Type in a name" placeholder="Buscar" autofocus>
+          </div>
+        </div>
+
+        <table id="tabla">
+          <thead class="header">
+            <tr>
+              <th style="width:50%;">Nombre</th>
+              <th style="width:15%;">Compañía</th>
+              <th style="width:15%;" class="hidden-on-medium">Cargo</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>Ana Pérez</td>
+              <td>Summa</td>
+              <td class="hidden-on-medium">Gerente</td>
+            </tr>
+            <tr>
+              <td>Juan Gómez</td>
+              <td>Celsia</td>
+              <td class="hidden-on-medium">Gerente</td>
+            </tr>
+            <tr>
+              <td>Luisa Martínez</td>
+              <td>Summa</td>
+              <td class="hidden-on-medium">Tesorera</td>
+            </tr>
+            <tr>
+              <td>Carlos Rodríguez</td>
+              <td>Summa</td>
+              <td class="hidden-on-medium">Coordinador</td>
+            </tr>
+            <tr>
+              <td>Sofía Hernández</td>
+              <td>Celsia</td>
+              <td class="hidden-on-medium">Lider</td>
+            </tr>
+            <tr>
+              <td>Miguel López</td>
+              <td>Summa</td>
+              <td class="hidden-on-medium">Asociado</td>
+            </tr>
+            <tr>
+              <td>Isabel García</td>
+              <td>Summa</td>
+              <td class="hidden-on-medium">Finanzas</td>
+            </tr>
+            <tr>
+              <td>David Fernández</td>
+              <td>Summa</td>
+              <td class="hidden-on-medium">Lider</td>
+            </tr>
+          </tbody>
+    </div>
+    <script>
+      function myFunction() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("entrada");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("tabla");
+        tr = table.getElementsByTagName("tr");
+        for (i = 0; i < tr.length; i++) {
+          td = tr[i].getElementsByTagName("td")[0];
+          if (td) {
+            txtValue = td.textContent || td.innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+              tr[i].style.display = "";
+            } else {
+              tr[i].style.display = "none";
+            }
+          }       
+        }
+      }
+      </script>
+</body>
+</html>
+
+readFiles.php
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A R P A</title>
+    <link rel="shortcut icon" href="/public/img/favicon.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../static/styleIN.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+  <div class="topnav-container">
+      <div>
+          <a href="./dashboard.html" class="logoIN">
+        <div class="nomPag">Análisis</div>
+          </a>
+        </div>
+        <div class="topnav">
+          <a href="./readFiles.html"><i class="fa fa-upload"></i></a>
+          <a href="./dashboard.html"><i class="fa fa-bar-chart"></i></a>
+        </div>
+      </div>
+
+        <div class="column">
+          <div class="card">
+            <a href="./filesData.html" style="color: green;"><i class="fa fa-file-excel-o"><span class="titles">Cargar Archivo Excel</span></i><i class="fa fa-search" style="color: #0b00a2;"></i></a>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="card">
+            <a href="" style="color: rgb(255, 0, 98);"><i class="fa fa-file-pdf-o"><span class="titles">Cargar Archivo PDF</span></i><i class="fa fa-search" style="color: #0b00a2;"></i></a>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="card">
+            <a href="" style="color: #0b00a2;"><i class="fa fa-file-word-o"><span class="titles">Cargar Archivo Word</span></i><i class="fa fa-search"></i></a>
+          </div>
+        </div>
+        
+    </div>
+</body>
+</html>
+
+reports.php
+
+
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A R P A</title>
+    <link rel="shortcut icon" href="/public/img/favicon.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+    <link rel="stylesheet" href="../static/styleIN.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+</head>
+<body>
+  <div class="topnav-container">
+      <div>
+        <a href="./dashboard.html" class="logoIN">
+          <div class="nomPag">Informes</div>
+        </a>
+      </div>
+      <div class="topnav">
+        <a href="./reports.html"><i class="fa fa-file-text-o"></i></a>
+        <a href="./dashboard.html"><i class="fa fa-bar-chart"></i></a>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="row">
+        <div class="column">
+          <div class="card">
+            <a href=""><i class="fa fa-file-text-o"><span class="titles">Informes de auditorías</span></i>5</a>
+          </div>
+        </div>
+      
+        <div class="column">
+          <div class="card">
+            <a href=""><i class="fa fa-handshake-o"><span class="titles">Declaracion de Conflictos</span></i>2</a>
+          </div>
+        </div>
+
+        <div class="column">
+          <div class="card">
+            <a href=""><i class="fa fa-phone"><span class="titles">Línea de Transparecia</span></i>5</a>
+          </div>
+        </div>
+    </div>
+  
+    <script>
+      function myFunction() {
+        var input, filter, table, tr, td, i, txtValue;
+        input = document.getElementById("entrada");
+        filter = input.value.toUpperCase();
+        table = document.getElementById("tabla");
+        tr = table.getElementsByTagName("tr");
+        for (i = 0; i < tr.length; i++) {
+          td = tr[i].getElementsByTagName("td")[0];
+          if (td) {
+            txtValue = td.textContent || td.innerText;
+            if (txtValue.toUpperCase().indexOf(filter) > -1) {
+              tr[i].style.display = "";
+            } else {
+              tr[i].style.display = "none";
+            }
+          }       
+        }
+      }
+      </script>
+</body>
+</html>
