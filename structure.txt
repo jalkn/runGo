@@ -31,29 +31,38 @@ audit-rpa-app/
 └── ...
 
 # Project structure
-app/
-├── __init__.py
+arpa/
+├── src/
+│   ├── db.py
+│   ├── controllers.py
+│   └── models.py
 ├── static/
-│   ├── style.css
-│   ├── styleIN.css
-│   └── favicon.png
+│   ├── css/
+│   │   ├── style.css
+│   │   ├── styleIN.css
+│   │   ├── styleData.css
+│   │   ├── file.css
+│   │   ├── chat.css
+│   │   └── favicon.png
+│   ├── js/
+│   │   └── script.css
+│   ├── upload/
+│   │   └── goods.xlsx
+│   ├── download/
+│   │   └── values.css
+│   └── img/
+│       └── favicon.png
 ├── templates/
 │   ├── login.html
 │   ├── register.html
-│   ├── base.html
-│   └── dashboard.html
-├── models/
-│   ├── __init__.py
+│   ├── dashboard.html
 │   └── user.py
-├── routes/
-│   ├── __init__.py
-│   ├── auth.py
-│   └── main.py
-├── utils/
-│   ├── __init__.py
-│   └── db.py
-├── config.py
-└── run.py
+├── .git
+├── .venv
+├── .env
+├── .gitignore
+├── README.md
+└── app.py
 
 # config.py
 import os
