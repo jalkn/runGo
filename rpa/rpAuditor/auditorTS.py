@@ -18,7 +18,6 @@ source venv/bin/activate
 pip install pandas numpy matplotlib seaborn openpyxl
 """
 
-
 class ExcelAuditor:
     def __init__(self, input_directory: str, output_directory: str):
         self.input_directory = Path(input_directory)
