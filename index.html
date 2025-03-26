@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Automatización RPA - Soluciones Personalizadas para Excel</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+        }
+        .logoIN {
+            cursor: pointer;
+            width: 40px;
+            height: 40px;
+            background-color: #0b00a2;
+            border-radius: 8px;
+            display: inline-flex;
+            position: relative;
+        }
+        .logoIN::before {
+            content: "";
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            position: absolute;
+            top: 30%;
+            left: 70%;
+            transform: translate(-50%, -50%);
+            background-image: linear-gradient(to right, 
+                #ffffff 2px, transparent 1.5px,
+                transparent 1.5px, #ffffff 1.5px,
+                #ffffff 2px, transparent 1.5px);
+            background-size: 4px 100%; 
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800">
+    <!-- Navigation -->
+    <nav class="bg-white text-blue-800 p-4 shadow-md">
+        <div class="container mx-auto flex justify-between items-center">
+            
+            <div class="text-2xl font-bold items-center flex">
+                <div class="logoIN" style="margin-right: 10px;"></div>
+                ARPA Excel Solutions
+            </div>
+            <div class="space-x-12">
+                <a href="#inicio" class="hover:text-blue-200">Inicio</a>
+                <a href="#servicios" class="hover:text-blue-200">Servicios</a>
+                <a href="#propuesta" class="hover:text-blue-200">Propuesta</a>
+                <a href="#contacto" class="hover:text-blue-200">Contacto</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <header id="inicio" class="bg-gradient-to-r from-blue-800 to-blue-800 text-white py-20">
+        <div class="container mx-auto text-center">
+            <h1 class="text-5xl font-bold mb-4">Automatización Inteligente de Excel</h1>
+            <p class="text-xl mb-8">Servicios personalizados de RPA para optimizar tus procesos de datos</p>
+            <a href="#contacto" class="bg-white text-blue-600 px-6 py-3 rounded-full font-semibold hover:bg-blue-100 transition">Contáctame</a>
+        </div>
+    </header>
+
+    <!-- Services Section -->
+    <section id="servicios" class="container mx-auto py-16 px-4">
+        <h2 class="text-3xl font-bold text-center mb-12">Nuestros Servicios</h2>
+        <div class="grid md:grid-cols-3 gap-8">
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold mb-4">RPA Personalizado</h3>
+                <p>Automatización robótica de procesos específicamente diseñados para tus archivos Excel</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold mb-4">Análisis de Datos</h3>
+                <p>Transformamos tus datos en información estratégica con soluciones de automatización</p>
+            </div>
+            <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-xl font-semibold mb-4">Soporte Técnico</h3>
+                <p>Acompañamiento continuo y personalizado en la implementación de tus procesos automatizados</p>
+            </div>
+        </div>
+    </section>
+
+    <!-- Value Proposition -->
+    <section id="propuesta" class="bg-blue-50 py-16">
+        <div class="container mx-auto text-center">
+            <h2 class="text-3xl font-bold mb-8">Nuestra Propuesta de Valor</h2>
+            <div class="max-w-3xl mx-auto">
+                <p class="text-lg mb-6">Ofrecemos soluciones de RPA totalmente personalizadas que transforman procesos manuales de Excel en flujos de trabajo eficientes y precisos.</p>
+                <ul class="space-y-4 text-left max-w-xl mx-auto">
+                    <li class="flex items-center">
+                        <svg class="w-6 h-6 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Reducción de errores humanos
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-6 h-6 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Ahorro significativo de tiempo
+                    </li>
+                    <li class="flex items-center">
+                        <svg class="w-6 h-6 text-blue-500 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                        Soluciones 100% adaptadas a tu negocio
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </section>
+
+    <!-- Contact Section -->
+    <section id="contacto" class="container mx-auto py-16 px-4">
+        <div class="max-w-lg mx-auto bg-white p-8 rounded-lg shadow-md">
+            <h2 class="text-3xl font-bold text-center mb-8">Contáctame</h2>
+            <form class="space-y-4">
+                <input type="text" placeholder="Nombre" class="w-full p-3 border rounded-md">
+                <input type="email" placeholder="Correo Electrónico" class="w-full p-3 border rounded-md">
+                <textarea placeholder="Describe tu proyecto" class="w-full p-3 border rounded-md" rows="4"></textarea>
+                <button class="w-full bg-blue-600 text-white py-3 rounded-md hover:bg-blue-700 transition">Enviar Mensaje</button>
+            </form>
+        </div>
+    </section>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-white py-8">
+        <div class="container mx-auto text-center">
+            <p>&copy; 2025 RPA Excel Solutions. Todos los derechos reservados.</p>
+        </div>
+    </footer>
+</body>
+</html>

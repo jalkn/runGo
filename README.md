@@ -4,7 +4,7 @@ Es una App para Automizar Procesos de Auditoria (RPA).
 
 # Link
 
-https://jalkntoth.github.io/arpApp/
+https://jalkn.github.io/arpApp/
 
 ## Introduccion y contextualización
 
@@ -12,7 +12,7 @@ La auditoría es un proceso crucial para asegurar el buen manejo de recursos de 
 
 ## Revisión Teórica y Empírica  
 
-La automatización de procesos robóticos (RPA) está revolucionando la forma en que las empresas realizan sus operaciones.  Estudios recientes demuestran que la RPA puede aumentar la eficiencia y reducir los errores en tareas repetitivas.  En el contexto de la auditoría, la RPA permite automatizar tareas como Analizar datos de Excel, realizar operaciones, sacar porcentajes, extraer y transformar informacion.  Esta automatización se basa en Python utilizando diversas librerías como Pandas y Matplotlib, en la que se puede extraer, transformar, cargar datos, para luego permitir que el auditor interactue con los resultados en la App.
+La automatización de procesos robóticos (RPA) está revolucionando la forma en que las empresas realizan sus operaciones.  Estudios recientes demuestran que la RPA puede aumentar la eficiencia y reducir los errores en tareas repetitivas.  En el contexto de la auditoría, la RPA permite automatizar tareas como Analizar datos de Excel, realizar operaciones, sacar porcentajes, extraer y transformar informacion.  Esta automatización se basa en Python utilizando la libreria Pandas en la que se puede extraer, transformar, cargar datos, para luego permitir que el auditor interactue con los resultados en la App.
 
 ## Análisis y Exploración 
 
@@ -24,7 +24,7 @@ Este RPA utiliza un enfoque basado en datos, para automatizar las tareas de audi
 
 1. Extraer datos relevantes.
 2. Analizar los datos.
-3. Generar un informe.
+3. Filtrar resultados.
 
 # Beneficios
 
@@ -162,3 +162,133 @@ python app.py
 ## Contribuciones
 
 Las contribuciones son bienvenidas. Por favor, abre un *issue* o envía un *pull request*.
+
+
+# Plan de Negocios: Servicios Personalizados de RPA para Análisis de Excel
+
+## 1. Análisis del Entorno
+
+### Análisis PESTEL
+- **Político**: Regulaciones de protección de datos
+- **Económico**: Creciente digitalización empresarial
+- **Social**: Demanda de eficiencia y automatización
+- **Tecnológico**: Transformación digital acelerada
+- **Ecológico**: Reducción de consumo de papel
+- **Legal**: Normativas de protección de datos y seguridad informática
+
+### Análisis de Competencia
+- Competidores directos: Servicios de consultoría tecnológica
+- Competidores indirectos: Soluciones RPA genéricas
+- Ventaja diferencial: Personalización y soporte directo
+
+## 2. Estrategias de Mercadeo
+
+### Producto
+- Servicios de RPA personalizado para análisis de Excel
+- Características:
+  - Automatización de procesos específicos
+  - Soporte técnico personalizado
+  - Adaptación a flujos de trabajo únicos del cliente
+
+### Precio
+- Modelo de pricing:
+  - Tarifa base por proyecto
+  - Opciones de paquetes personalizados
+  - Tarifas por hora de consultoría
+
+### Promoción
+- Marketing digital
+- Networking en comunidades de desarrollo
+- Presentaciones en eventos de emprendimiento
+- Marketing de contenidos técnicos
+- Testimonios de clientes
+
+### Plaza
+- Canales de distribución:
+  - Plataforma web
+  - Redes profesionales (LinkedIn)
+  - Referidos
+  - Eventos de tecnología
+
+## 3. Proyección de Ventas
+
+### Indicadores de Gestión
+- Número de proyectos completados
+- Satisfacción del cliente
+- Tiempo de entrega
+- Margen de utilidad
+- Tasa de retención de clientes
+
+### Proyección Financiera (Estimado)
+- Año 1: 3-5 proyectos mensuales
+- Año 2: 8-12 proyectos mensuales
+- Año 3: 15-20 proyectos mensuales
+
+## 4. Requisitos Legales y Manifiesto de Marca
+
+### Requisitos Legales
+- Registro de empresa
+- Declaraciones fiscales
+- Contratos de servicios
+- Políticas de protección de datos
+- Registro de propiedad intelectual
+
+### Manifiesto de Marca
+- Misión: Simplificar procesos empresariales mediante RPA personalizado
+- Valores:
+  - Innovación
+  - Transparencia
+  - Compromiso con el cliente
+  - Mejora continua
+
+## 5. Modelo CANVAS
+
+### Segmentos de Cliente
+- Pequeñas y medianas empresas
+- Departamentos administrativos
+- Analistas de datos
+
+### Propuesta de Valor
+- RPA personalizado
+- Reducción de errores
+- Ahorro de tiempo
+- Soporte técnico dedicado
+
+### Canales
+- Sitio web
+- Redes sociales profesionales
+- Eventos de tecnología
+- Referidos
+
+### Relación con Clientes
+- Consultoría personalizada
+- Soporte técnico continuo
+- Seguimiento post-proyecto
+
+### Fuentes de Ingresos
+- Proyectos de RPA
+- Consultoría por horas
+- Paquetes de mantenimiento
+
+### Recursos Clave
+- Conocimiento técnico
+- Herramientas de desarrollo
+- Red de contactos
+- Equipamiento tecnológico
+
+### Actividades Clave
+- Desarrollo de RPA
+- Consultoría
+- Implementación
+- Soporte técnico
+
+### Socios Clave
+- Proveedores de tecnología
+- Comunidades de desarrollo
+- Instituciones educativas
+
+### Estructura de Costos
+- Desarrollo de software
+- Marketing
+- Infraestructura tecnológica
+- Capacitación
