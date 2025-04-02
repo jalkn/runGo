@@ -45,7 +45,7 @@ Ejecute el script principal `run.ps1`. Este script instala las dependencias, cre
 Después de ejecutar `run.ps1`, se abrira el navegador con la visualización de los datos. Tambien la carpeta `tables/` contendrá los resultados del análisis en archivos Excel, organizados en las subcarpetas `cats/`, `nets/` y `trends/`.  La estructura resultante será similar a la siguiente:
 
 ```
-byrAnalize/
+arpa/
 ├── models/
 │   ├── passKey.py
 │   ├── server.py

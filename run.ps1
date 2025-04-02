@@ -111,7 +111,6 @@ Write-Host "🏗️ Creating FKID01 Filter" -ForegroundColor $YELLOW
     # toJson
     Set-Content -Path "models/toJson.py" -Value @"
 import pandas as pd
-import json
 
 def excel_to_json(excel_file, json_file):
 
@@ -140,8 +139,6 @@ if __name__ == "__main__":
 
     excel_to_json(excel_file_path, json_file_path)
 "@
-
-
 
 }
 
@@ -979,8 +976,8 @@ def process_asset_data(df_assets):
     # Group by Usuario and Año Declaración to calculate total bank balance, number of banks, total assets, total investments, and number of investments
     df_assets_grouped = df_assets.groupby(['Usuario', 'Año Declaración']).agg(
         BancoSaldo=('Banco - Saldo COP', 'sum'),
-        Bienes=('Bienes - Valor Corregido', 'sum'),
-        Inversiones=('Inversiones - Valor COP', 'sum')
+        Bienes=('Total Bienes', 'sum'),
+        Inversiones=('Total Inversiones', 'sum')
     ).reset_index()
 
     # Calculate variations for BancoSaldo
@@ -1001,7 +998,7 @@ def process_income_data(df_income):
 
     # Group by Usuario and Año Declaración to calculate total income and number of incomes
     df_income_grouped = df_income.groupby(['Usuario', 'Año Declaración']).agg(
-        Ingresos=('Ingresos - Valor COP', 'sum'),
+        Ingresos=('Total Ingresos', 'sum'),
         Cant_Ingresos=('Cantidad de Ingresos', 'sum')
     ).reset_index()
 
@@ -1084,7 +1081,6 @@ if __name__ == "__main__":
    
 Set-Content -Path "models/trends/overTrends.py" -Value @"
 import pandas as pd
-import json
 
 def get_trend_symbol(value):
     """Determine the trend symbol based on the percentage change."""
@@ -2674,13 +2670,14 @@ function createStructure {
 
 }
 
-function generateCaTables {
-    Write-Host "🏗️ Generating Cat Tables  " -ForegroundColor $GREEN
+function generateTables {
+    Write-Host "🏗️ Generating Tables" -ForegroundColor $GREEN
 
     # Python scripts to generate tables
     $scripts = @(
         "models/passKey.py",
         "models/cats.py",
+        "models/nets.py",
         "models/toJson.py"
     )
 
@@ -2689,28 +2686,9 @@ function generateCaTables {
         python $script
     }
 }
-function generateNeTables {
-    Write-Host "🏗️ Generating Net Tables  " -ForegroundColor $GREEN
 
-    # Python scripts to generate tables
-    $scripts = @(
-        "models/nets/bankNets.py",
-        "models/nets/debtNets.py",
-        "models/nets/goodNets.py",
-        "models/nets/incomeNets.py",
-        "models/nets/investNets.py",
-        "models/nets/assetNets.py",
-        "models/nets/worthNets.py"
-    )
-
-    foreach ($script in $scripts) {
-        #Execute the script
-        python $script
-    }
-}
-
-function generatrendTables {
-    Write-Host "🏗️ Generating Trends Tables  " -ForegroundColor $GREEN
+function generaTrends {
+    Write-Host "🏗️ Generating Trends" -ForegroundColor $GREEN
 
     # Python scripts to generate tables
     $scripts = @(
@@ -2758,9 +2736,8 @@ function main {
     createTrends
 
     # Generate tables
-    generateCaTables
-    generateNeTables
-    generatrendTables
+    generateTables
+    generaTrends
     deleteData
 
     Write-Host "🏗️ The tables are generated" -ForegroundColor $YELLOW
