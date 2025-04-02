@@ -149,11 +149,11 @@ function createCats {
     Write-Host "🏗️ Creating Categories" -ForegroundColor $YELLOW
     
     # Banks
-    Set-Content -Path "models/cats/banks.py" -Value @"
+    Set-Content -Path "models/cats.py" -Value @"
 import pandas as pd
 from datetime import datetime
 
-# Dictionary of historical TRM values (you can extend this with more years)
+# Shared constants and functions
 TRM_DICT = {
     2020: 3432.50,
     2021: 3981.16,
@@ -162,7 +162,6 @@ TRM_DICT = {
     2024: 4409.00
 }
 
-# Dictionary of currency to USD conversion rates
 CURRENCY_RATES = {
     2020: {
         'EUR': 1.141, 'GBP': 1.280, 'AUD': 0.690, 'CAD': 0.746,
@@ -179,7 +178,6 @@ CURRENCY_RATES = {
         'COP': 0.00027, 'BBD': 0.50, 'MXN': 0.0492, 'BOB': 0.141, 'BSD': 1.00,
         'GYD': 0.0047, 'UYU': 0.024, 'DKK': 0.155, 'KYD': 1.20, 'BMD': 1.00,
         'VEB': 0.00000000002, 'VES': 0.00000002, 'BRL': 0.192, 'NIO': 0.0285
-        
     },
     2022: {
         'EUR': 1.051, 'GBP': 1.209, 'AUD': 0.688, 'CAD': 0.764,
@@ -247,7 +245,6 @@ def get_currency_code(moneda_text):
         'VES - Bolívar soberano': 'VES',  
         'BRL - Real brasilero': 'BRL',  
         'NIO - Córdoba nicaragüense': 'NIO',
-        
     }
     return currency_mapping.get(moneda_text)
 
@@ -283,16 +280,12 @@ def get_valid_year(row, periodo_df):
     except Exception as e:
         print(f"Error in get_valid_year for fkIdPeriodo {fkIdPeriodo} at index {row.name}: {e}")
         return None
-    
-def analyzeBanks(file_path, output_file_path, periodo_file_path):
 
-    # Read the input Excel file into a DataFrame
+def analyze_banks(file_path, output_file_path, periodo_file_path):
+    """Analyze bank account data"""
     df = pd.read_excel(file_path)
-
-    # Read the periodo Excel file into a DataFrame
     periodo_df = pd.read_excel(periodo_file_path)
 
-    # List of columns to maintain in the final output
     maintain_columns = [
         'fkIdPeriodo', 'fkIdEstado',
         'Año Creación', 'Año Envío', 'Usuario',
@@ -302,50 +295,36 @@ def analyzeBanks(file_path, output_file_path, periodo_file_path):
         'Banco - Saldo', 'Banco - Comentario'
     ]
     
-    # Filter rows where 'RUBRO DE DECLARACIÓN' is 'Banco' and keep only the specified columns
     banks_df = df.loc[df['RUBRO DE DECLARACIÓN'] == 'Banco', maintain_columns].copy()
-    
-    # Filter out rows with fkIdEstado == 1 BEFORE processing
     banks_df = banks_df[banks_df['fkIdEstado'] != 1]
     
-    # Initialize new columns for calculated values
     banks_df['Banco - Saldo COP'] = 0.0
     banks_df['TRM Aplicada'] = None
     banks_df['Tasa USD'] = None
     banks_df['Año Declaración'] = None 
     
-    # Iterate over each row in the DataFrame to process the data
     for index, row in banks_df.iterrows():
         try:
-            # Get the valid year for the row
             year = get_valid_year(row, periodo_df)
             if year is None:
                 print(f"Warning: Could not determine valid year for index {index} and fkIdPeriodo {row['fkIdPeriodo']}. Skipping row.")
                 banks_df.loc[index, 'Año Declaración'] = "Año no encontrado"
                 continue 
                 
-            # Assign the year to the 'Año Declaración' column
             banks_df.loc[index, 'Año Declaración'] = year
             currency_code = get_currency_code(row['Texto Moneda'])
             
-            # If the currency is COP, no conversion is needed
             if currency_code == 'COP':
                 banks_df.loc[index, 'Banco - Saldo COP'] = float(row['Banco - Saldo'])
                 banks_df.loc[index, 'TRM Aplicada'] = 1.0
                 banks_df.loc[index, 'Tasa USD'] = None
                 continue
                 
-            # If the currency code is valid, proceed with conversion
             if currency_code:
                 trm = get_trm(year)
-                
-                if currency_code == 'USD':
-                    usd_rate = 1.0
-                else:
-                    usd_rate = get_exchange_rate(currency_code, year)
+                usd_rate = 1.0 if currency_code == 'USD' else get_exchange_rate(currency_code, year)
                 
                 if trm and usd_rate:
-                    # Calculate: Original Amount -> USD -> COP
                     usd_amount = float(row['Banco - Saldo']) * usd_rate
                     cop_amount = usd_amount * trm
                     
@@ -362,162 +341,13 @@ def analyzeBanks(file_path, output_file_path, periodo_file_path):
             banks_df.loc[index, 'Año Declaración'] = "Error de procesamiento"
             continue
     
-    # Save the processed DataFrame to an Excel file
     banks_df.to_excel(output_file_path, index=False)
 
-# Define file paths for input and output
-file_path = 'src/data.xlsx'
-output_file_path = 'tables/cats/banks.xlsx'
-periodo_file_path = 'src/periodoBR.xlsx'
-
-# Call the analyzeBanks function to process the data
-analyzeBanks(file_path, output_file_path, periodo_file_path)
-"@
-
-    # Debts
-    Set-Content -Path "models/cats/debts.py" -Value @"
-import pandas as pd
-from datetime import datetime
-
-# Dictionary of historical TRM values (you can extend this with more years)
-TRM_DICT = {
-    2020: 3432.50,
-    2021: 3981.16,
-    2022: 4810.20,
-    2023: 4780.38,
-    2024: 4409.00
-}
-
-# Dictionary of currency to USD conversion rates
-CURRENCY_RATES = {
-    2020: {
-        'EUR': 1.141, 'GBP': 1.280, 'AUD': 0.690, 'CAD': 0.746,
-        'HNL': 0.0406, 'AWG': 0.558, 'DOP': 0.0172, 'PAB': 1.000,
-        'CLP': 0.00126, 'CRC': 0.00163, 'ARS': 0.0119, 'ANG': 0.558,
-        'COP': 0.00026,  'BBD': 0.50, 'MXN': 0.0477, 'BOB': 0.144, 'BSD': 1.00,
-        'GYD': 0.0048, 'UYU': 0.025, 'DKK': 0.146, 'KYD': 1.20, 'BMD': 1.00, 
-        'VEB': 0.0000000248, 'VES': 0.000000248, 'BRL': 0.187, 'NIO': 0.0278
-    },
-    2021: {
-        'EUR': 1.183, 'GBP': 1.376, 'AUD': 0.727, 'CAD': 0.797,
-        'HNL': 0.0415, 'AWG': 0.558, 'DOP': 0.0176, 'PAB': 1.000,
-        'CLP': 0.00118, 'CRC': 0.00156, 'ARS': 0.00973, 'ANG': 0.558,
-        'COP': 0.00027, 'BBD': 0.50, 'MXN': 0.0492, 'BOB': 0.141, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.024, 'DKK': 0.155, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0.00000000002, 'VES': 0.00000002, 'BRL': 0.192, 'NIO': 0.0285
-        
-    },
-    2022: {
-        'EUR': 1.051, 'GBP': 1.209, 'AUD': 0.688, 'CAD': 0.764,
-        'HNL': 0.0408, 'AWG': 0.558, 'DOP': 0.0181, 'PAB': 1.000,
-        'CLP': 0.00117, 'CRC': 0.00155, 'ARS': 0.00597, 'ANG': 0.558,
-        'COP': 0.00021, 'BBD': 0.50, 'MXN': 0.0497, 'BOB': 0.141, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.025, 'DKK': 0.141, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0, 'VES': 0.000000001, 'BRL': 0.196, 'NIO': 0.0267
-    },
-    2023: {
-        'EUR': 1.096, 'GBP': 1.264, 'AUD': 0.676, 'CAD': 0.741,
-        'HNL': 0.0406, 'AWG': 0.558, 'DOP': 0.0177, 'PAB': 1.000,
-        'CLP': 0.00121, 'CRC': 0.00187, 'ARS': 0.00275, 'ANG': 0.558,
-        'COP': 0.00022, 'BBD': 0.50, 'MXN': 0.0564, 'BOB': 0.143, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.025, 'DKK': 0.148, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0, 'VES': 0.000000001, 'BRL': 0.194, 'NIO': 0.0267
-    },
-    2024: {
-        'EUR': 1.093, 'GBP': 1.267, 'AUD': 0.674, 'CAD': 0.742,
-        'HNL': 0.0405, 'AWG': 0.558, 'DOP': 0.0170, 'PAB': 1.000,
-        'CLP': 0.00111, 'CRC': 0.00192, 'ARS': 0.00121, 'ANG': 0.558,
-        'COP': 0.00022, 'BBD': 0.50, 'MXN': 0.0547, 'BOB': 0.142, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.024, 'DKK': 0.147, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0, 'VES': 0.000000001, 'BRL': 0.190, 'NIO': 0.0260 }
-}
-
-def get_trm(year):
-    """Gets TRM for a given year from the dictionary"""
-    return TRM_DICT.get(year)
-
-def get_exchange_rate(currency_code, year):
-    """Gets exchange rate for a given currency and year from the dictionary"""
-    year_rates = CURRENCY_RATES.get(year)
-    if year_rates:
-        return year_rates.get(currency_code)
-    return None
-
-def get_currency_code(moneda_text):
-    """Extracts the currency code from the 'Texto Moneda' field"""
-    currency_mapping = {
-        'HNL -Lempira hondureño': 'HNL',
-        'EUR - Euro': 'EUR',
-        'AWG - Florín holandés o de Aruba': 'AWG',
-        'DOP - Peso dominicano': 'DOP',
-        'PAB -Balboa panameña': 'PAB', 
-        'CLP - Peso chileno': 'CLP',
-        'CRC - Colón costarricense': 'CRC',
-        'ARS - Peso argentino': 'ARS',
-        'AUD - Dólar australiano': 'AUD',
-        'ANG - Florín holandés': 'ANG',
-        'CAD -Dólar canadiense': 'CAD',
-        'GBP - Libra esterlina': 'GBP',
-        'USD - Dolar estadounidense': 'USD',
-        'COP - Peso colombiano': 'COP',
-        'BBD - Dólar de Barbados o Baja': 'BBD',
-        'MXN - Peso mexicano': 'MXN',
-        'BOB - Boliviano': 'BOB',
-        'BSD - Dolar bahameño': 'BSD',
-        'GYD - Dólar guyanés': 'GYD',
-        'UYU - Peso uruguayo': 'UYU',
-        'DKK - Corona danesa': 'DKK',
-        'KYD - Dólar de las Caimanes': 'KYD',
-        'BMD - Dólar de las Bermudas': 'BMD',
-        'VEB - Bolívar venezolano': 'VEB',  
-        'VES - Bolívar soberano': 'VES',  
-        'BRL - Real brasilero': 'BRL',  
-        'NIO - Córdoba nicaragüense': 'NIO',
-    }
-    return currency_mapping.get(moneda_text)
-
-def get_valid_year(row, periodo_df):
-    """Extracts a valid year, handling missing values and format variations."""
-    try:
-        fkIdPeriodo = pd.to_numeric(row['fkIdPeriodo'], errors='coerce')
-        if pd.isna(fkIdPeriodo):  # Handle missing fkIdPeriodo
-            print(f"Warning: Missing fkIdPeriodo at index {row.name}. Skipping row.")
-            return None
-
-        matching_row = periodo_df[periodo_df['Id'] == fkIdPeriodo]
-        if matching_row.empty:
-            print(f"Warning: No matching Id found in periodoBR.xlsx for fkIdPeriodo {fkIdPeriodo} at index {row.name}. Skipping row.")
-            return None
-
-        year_str = matching_row['Año'].iloc[0]
-
-        try:
-            year = int(year_str)  # Try direct conversion to integer
-            return year
-        except (ValueError, TypeError):
-            try:
-                year = pd.to_datetime(year_str, errors='coerce').year  # Try datetime conversion, handle errors gracefully
-                if pd.isna(year):  # check for NaT which occurs when conversion fails.
-                    raise ValueError  # If conversion failed re-raise a ValueError.
-                return year
-
-            except ValueError:
-                print(f"Warning: Invalid year format '{year_str}' for fkIdPeriodo {fkIdPeriodo} at index {row.name}. Skipping row.")
-                return None
-
-    except Exception as e:
-        print(f"Error in get_valid_year for fkIdPeriodo {fkIdPeriodo} at index {row.name}: {e}")
-        return None
-
-def analyzeDebts(file_path, output_file_path, periodo_file_path):
-
-    # Read the input Excel file into a DataFrame
+def analyze_debts(file_path, output_file_path, periodo_file_path):
+    """Analyze debts data"""
     df = pd.read_excel(file_path)
-
-    # Read the periodo Excel file into a DataFrame
     periodo_df = pd.read_excel(periodo_file_path)
 
-    # List of columns to maintain in the final output
     maintain_columns = [
         'fkIdPeriodo', 'fkIdEstado',
         'Año Creación', 'Año Envío', 'Usuario', 'Nombre',
@@ -527,53 +357,38 @@ def analyzeDebts(file_path, output_file_path, periodo_file_path):
         'Pasivos - Valor', 'Pasivos - Comentario', 'Pasivos - Valor COP'
     ]
     
-    # Filter rows where 'RUBRO DE DECLARACIÓN' is 'Pasivo' and keep only the specified columns
     debts_df = df.loc[df['RUBRO DE DECLARACIÓN'] == 'Pasivo', maintain_columns].copy()
-    
-    # Filter out rows with fkIdEstado == 1 BEFORE processing
     debts_df = debts_df[debts_df['fkIdEstado'] != 1]
     
-    # Initialize new columns for calculated values
     debts_df['Pasivos - Valor COP'] = 0.0
     debts_df['TRM Aplicada'] = None
     debts_df['Tasa USD'] = None
     debts_df['Año Declaración'] = None 
     
-    # Iterate over each row in the DataFrame to process the data
     for index, row in debts_df.iterrows():
         try:
-            # Get the valid year for the row
             year = get_valid_year(row, periodo_df)
             if year is None:
                 print(f"Warning: Could not determine valid year for index {index}. Skipping row.")
                 continue
             
-            # Assign the year to the 'Año Declaración' column
             debts_df.loc[index, 'Año Declaración'] = year
             currency_code = get_currency_code(row['Texto Moneda'])
             
-            # If the currency is COP, no conversion is needed
             if currency_code == 'COP':
                 debts_df.loc[index, 'Pasivos - Valor COP'] = float(row['Pasivos - Valor'])
                 debts_df.loc[index, 'TRM Aplicada'] = 1.0
                 debts_df.loc[index, 'Tasa USD'] = None
                 continue
             
-            # If the currency code is valid, proceed with conversion
             if currency_code:
                 trm = get_trm(year)
-                
-                if currency_code == 'USD':
-                    usd_rate = 1.0
-                else:
-                    usd_rate = get_exchange_rate(currency_code, year)
+                usd_rate = 1.0 if currency_code == 'USD' else get_exchange_rate(currency_code, year)
                 
                 if trm and usd_rate:
-                    # Calculate: Original Amount -> USD -> COP
                     usd_amount = float(row['Pasivos - Valor']) * usd_rate
                     cop_amount = usd_amount * trm
                     
-                    # Update the DataFrame with the calculated values
                     debts_df.loc[index, 'Pasivos - Valor COP'] = cop_amount
                     debts_df.loc[index, 'TRM Aplicada'] = trm
                     debts_df.loc[index, 'Tasa USD'] = usd_rate
@@ -587,162 +402,13 @@ def analyzeDebts(file_path, output_file_path, periodo_file_path):
             debts_df.loc[index, 'Año Declaración'] = "Error de procesamiento"
             continue
 
-    # Save the processed DataFrame to an Excel file
     debts_df.to_excel(output_file_path, index=False)
 
-# Define file paths for input and output
-file_path = 'src/data.xlsx'
-output_file_path = 'tables/cats/debts.xlsx'
-periodo_file_path = 'src/periodoBR.xlsx'
-
-# Call the analyzeDebts function to process the data
-analyzeDebts(file_path, output_file_path, periodo_file_path)
-"@
-
-    # goods
-    Set-Content -Path "models/cats/goods.py" -Value @"
-import pandas as pd
-from datetime import datetime
-
-# Dictionary of historical TRM values (you can extend this with more years)
-TRM_DICT = {
-    2020: 3432.50,
-    2021: 3981.16,
-    2022: 4810.20,
-    2023: 4780.38,
-    2024: 4409.00
-}
-
-# Dictionary of currency to USD conversion rates
-CURRENCY_RATES = {
-    2020: {
-        'EUR': 1.141, 'GBP': 1.280, 'AUD': 0.690, 'CAD': 0.746,
-        'HNL': 0.0406, 'AWG': 0.558, 'DOP': 0.0172, 'PAB': 1.000,
-        'CLP': 0.00126, 'CRC': 0.00163, 'ARS': 0.0119, 'ANG': 0.558,
-        'COP': 0.00026,  'BBD': 0.50, 'MXN': 0.0477, 'BOB': 0.144, 'BSD': 1.00,
-        'GYD': 0.0048, 'UYU': 0.025, 'DKK': 0.146, 'KYD': 1.20, 'BMD': 1.00, 
-        'VEB': 0.0000000248, 'VES': 0.000000248, 'BRL': 0.187, 'NIO': 0.0278
-    },
-    2021: {
-        'EUR': 1.183, 'GBP': 1.376, 'AUD': 0.727, 'CAD': 0.797,
-        'HNL': 0.0415, 'AWG': 0.558, 'DOP': 0.0176, 'PAB': 1.000,
-        'CLP': 0.00118, 'CRC': 0.00156, 'ARS': 0.00973, 'ANG': 0.558,
-        'COP': 0.00027, 'BBD': 0.50, 'MXN': 0.0492, 'BOB': 0.141, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.024, 'DKK': 0.155, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0.00000000002, 'VES': 0.00000002, 'BRL': 0.192, 'NIO': 0.0285
-        
-    },
-    2022: {
-        'EUR': 1.051, 'GBP': 1.209, 'AUD': 0.688, 'CAD': 0.764,
-        'HNL': 0.0408, 'AWG': 0.558, 'DOP': 0.0181, 'PAB': 1.000,
-        'CLP': 0.00117, 'CRC': 0.00155, 'ARS': 0.00597, 'ANG': 0.558,
-        'COP': 0.00021, 'BBD': 0.50, 'MXN': 0.0497, 'BOB': 0.141, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.025, 'DKK': 0.141, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0, 'VES': 0.000000001, 'BRL': 0.196, 'NIO': 0.0267
-    },
-    2023: {
-        'EUR': 1.096, 'GBP': 1.264, 'AUD': 0.676, 'CAD': 0.741,
-        'HNL': 0.0406, 'AWG': 0.558, 'DOP': 0.0177, 'PAB': 1.000,
-        'CLP': 0.00121, 'CRC': 0.00187, 'ARS': 0.00275, 'ANG': 0.558,
-        'COP': 0.00022, 'BBD': 0.50, 'MXN': 0.0564, 'BOB': 0.143, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.025, 'DKK': 0.148, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0, 'VES': 0.000000001, 'BRL': 0.194, 'NIO': 0.0267
-    },
-    2024: {
-        'EUR': 1.093, 'GBP': 1.267, 'AUD': 0.674, 'CAD': 0.742,
-        'HNL': 0.0405, 'AWG': 0.558, 'DOP': 0.0170, 'PAB': 1.000,
-        'CLP': 0.00111, 'CRC': 0.00192, 'ARS': 0.00121, 'ANG': 0.558,
-        'COP': 0.00022, 'BBD': 0.50, 'MXN': 0.0547, 'BOB': 0.142, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.024, 'DKK': 0.147, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0, 'VES': 0.000000001, 'BRL': 0.190, 'NIO': 0.0260 }
-}
-
-def get_trm(year):
-    """Gets TRM for a given year from the dictionary"""
-    return TRM_DICT.get(year)
-
-def get_exchange_rate(currency_code, year):
-    """Gets exchange rate for a given currency and year from the dictionary"""
-    year_rates = CURRENCY_RATES.get(year)
-    if year_rates:
-        return year_rates.get(currency_code)
-    return None
-
-def get_currency_code(moneda_text):
-    """Extracts the currency code from the 'Texto Moneda' field"""
-    currency_mapping = {
-        'HNL -Lempira hondureño': 'HNL',
-        'EUR - Euro': 'EUR',
-        'AWG - Florín holandés o de Aruba': 'AWG',
-        'DOP - Peso dominicano': 'DOP',
-        'PAB -Balboa panameña': 'PAB', 
-        'CLP - Peso chileno': 'CLP',
-        'CRC - Colón costarricense': 'CRC',
-        'ARS - Peso argentino': 'ARS',
-        'AUD - Dólar australiano': 'AUD',
-        'ANG - Florín holandés': 'ANG',
-        'CAD -Dólar canadiense': 'CAD',
-        'GBP - Libra esterlina': 'GBP',
-        'USD - Dolar estadounidense': 'USD',
-        'COP - Peso colombiano': 'COP',
-        'BBD - Dólar de Barbados o Baja': 'BBD',
-        'MXN - Peso mexicano': 'MXN',
-        'BOB - Boliviano': 'BOB',
-        'BSD - Dolar bahameño': 'BSD',
-        'GYD - Dólar guyanés': 'GYD',
-        'UYU - Peso uruguayo': 'UYU',
-        'DKK - Corona danesa': 'DKK',
-        'KYD - Dólar de las Caimanes': 'KYD',
-        'BMD - Dólar de las Bermudas': 'BMD',
-        'VEB - Bolívar venezolano': 'VEB',  
-        'VES - Bolívar soberano': 'VES',  
-        'BRL - Real brasilero': 'BRL',  
-        'NIO - Córdoba nicaragüense': 'NIO',
-    }
-    return currency_mapping.get(moneda_text)
-
-def get_valid_year(row, periodo_df):
-    """Extracts a valid year, handling missing values and format variations."""
-    try:
-        fkIdPeriodo = pd.to_numeric(row['fkIdPeriodo'], errors='coerce')
-        if pd.isna(fkIdPeriodo):  # Handle missing fkIdPeriodo
-            print(f"Warning: Missing fkIdPeriodo at index {row.name}. Skipping row.")
-            return None
-
-        matching_row = periodo_df[periodo_df['Id'] == fkIdPeriodo]
-        if matching_row.empty:
-            print(f"Warning: No matching Id found in periodoBR.xlsx for fkIdPeriodo {fkIdPeriodo} at index {row.name}. Skipping row.")
-            return None
-
-        year_str = matching_row['Año'].iloc[0]
-
-        try:
-            year = int(year_str)  # Try direct conversion to integer
-            return year
-        except (ValueError, TypeError):
-            try:
-                year = pd.to_datetime(year_str, errors='coerce').year  # Try datetime conversion, handle errors gracefully
-                if pd.isna(year):  # check for NaT which occurs when conversion fails.
-                    raise ValueError  # If conversion failed re-raise a ValueError.
-                return year
-
-            except ValueError:
-                print(f"Warning: Invalid year format '{year_str}' for fkIdPeriodo {fkIdPeriodo} at index {row.name}. Skipping row.")
-                return None
-
-    except Exception as e:
-        print(f"Error in get_valid_year for fkIdPeriodo {fkIdPeriodo} at index {row.name}: {e}")
-        return None
-
-def analyzeGoods(file_path, output_file_path, periodo_file_path):
-
-    # Read the input Excel file into a DataFrame
+def analyze_goods(file_path, output_file_path, periodo_file_path):
+    """Analyze goods/patrimony data"""
     df = pd.read_excel(file_path)
-
-    # Read the periodo Excel file into a DataFrame
     periodo_df = pd.read_excel(periodo_file_path)
 
-    # List of columns to maintain in the final output
     maintain_columns = [
         'fkIdPeriodo', 'fkIdEstado',
         'Año Creación', 'Año Envío', 'Usuario', 'Nombre',
@@ -754,8 +420,6 @@ def analyzeGoods(file_path, output_file_path, periodo_file_path):
     ]
     
     goods_df = df.loc[df['RUBRO DE DECLARACIÓN'] == 'Patrimonio', maintain_columns].copy()
-    
-    # Filter out rows with fkIdEstado == 1 BEFORE processing
     goods_df = goods_df[goods_df['fkIdEstado'] != 1]
     
     goods_df['Patrimonio - Valor COP'] = 0.0
@@ -763,37 +427,27 @@ def analyzeGoods(file_path, output_file_path, periodo_file_path):
     goods_df['Tasa USD'] = None
     goods_df['Año Declaración'] = None 
     
-    # Iterate over each row in the DataFrame to process the data
     for index, row in goods_df.iterrows():
         try:
-            # Get the valid year for the row
             year = get_valid_year(row, periodo_df)
             if year is None:
                 print(f"Warning: Could not determine valid year for index {index}. Skipping row.")
                 continue
                 
-            # Assign the year to the 'Año Declaración' column
             goods_df.loc[index, 'Año Declaración'] = year
             currency_code = get_currency_code(row['Texto Moneda'])
             
-            # If the currency is COP, no conversion is needed
             if currency_code == 'COP':
                 goods_df.loc[index, 'Patrimonio - Valor COP'] = float(row['Patrimonio - Valor Comercial'])
                 goods_df.loc[index, 'TRM Aplicada'] = 1.0
                 goods_df.loc[index, 'Tasa USD'] = None
                 continue
             
-            # If the currency code is valid, proceed with conversion
             if currency_code:
                 trm = get_trm(year)
-                
-                if currency_code == 'USD':
-                    usd_rate = 1.0
-                else:
-                    usd_rate = get_exchange_rate(currency_code, year)
+                usd_rate = 1.0 if currency_code == 'USD' else get_exchange_rate(currency_code, year)
                 
                 if trm and usd_rate:
-                    # Calculate: Original Amount -> USD -> COP
                     usd_amount = float(row['Patrimonio - Valor Comercial']) * usd_rate
                     cop_amount = usd_amount * trm
                     
@@ -809,175 +463,28 @@ def analyzeGoods(file_path, output_file_path, periodo_file_path):
             print(f"Warning: Error processing row at index {index}: {e}")
             continue
         
-    # Calculate the average 'Patrimonio - Valor COP' based on ownership percentage
     goods_df['Patrimonio - Valor Corregido'] = goods_df['Patrimonio - Valor COP'] * (goods_df['Patrimonio - % Propiedad'] / 100)
-
-    # Rename 'patrimonio' column for clarity
-    goods_df = goods_df.rename(columns={'Patrimonio - Valor Corregido': 'Bienes - Valor Corregido'})
-    goods_df = goods_df.rename(columns={'Patrimonio - Valor Comercial COP': 'Bienes - Valor Comercial COP'})
-    goods_df = goods_df.rename(columns={'Patrimonio - Comentario': 'Bienes - Comentario'})
-    goods_df = goods_df.rename(columns={'Patrimonio - Valor Comercial': 'Bienes - Valor Comercial'})
-    goods_df = goods_df.rename(columns={'Patrimonio - Propietario': 'Bienes - Propietario'})
-    goods_df = goods_df.rename(columns={'Patrimonio - % Propiedad': 'Bienes - % Propiedad'})
-    goods_df = goods_df.rename(columns={'Patrimonio - Activo': 'Bienes - Activo'})
-    goods_df = goods_df.rename(columns={'Patrimonio - Valor COP': 'Bienes - Valor COP'})    
     
-    # Save the processed DataFrame to an Excel file
+    # Rename columns for consistency
+    rename_dict = {
+        'Patrimonio - Valor Corregido': 'Bienes - Valor Corregido',
+        'Patrimonio - Valor Comercial COP': 'Bienes - Valor Comercial COP',
+        'Patrimonio - Comentario': 'Bienes - Comentario',
+        'Patrimonio - Valor Comercial': 'Bienes - Valor Comercial',
+        'Patrimonio - Propietario': 'Bienes - Propietario',
+        'Patrimonio - % Propiedad': 'Bienes - % Propiedad',
+        'Patrimonio - Activo': 'Bienes - Activo',
+        'Patrimonio - Valor COP': 'Bienes - Valor COP'
+    }
+    goods_df = goods_df.rename(columns=rename_dict)
+    
     goods_df.to_excel(output_file_path, index=False)
 
-# Define file paths for input and output
-file_path = 'src/data.xlsx'
-output_file_path = 'tables/cats/goods.xlsx'
-periodo_file_path = 'src/periodoBR.xlsx'
-
-# Call the analyzeGoods function to process the data
-analyzeGoods(file_path, output_file_path, periodo_file_path)
-"@
-
-    # incomes
-    Set-Content -Path "models/cats/incomes.py" -Value @"
-import pandas as pd
-from datetime import datetime
-
-# Dictionary of historical TRM values (you can extend this with more years)
-TRM_DICT = {
-    2020: 3432.50,
-    2021: 3981.16,
-    2022: 4810.20,
-    2023: 4780.38,
-    2024: 4409.00
-}
-
-# Dictionary of currency to USD conversion rates
-CURRENCY_RATES = {
-    2020: {
-        'EUR': 1.141, 'GBP': 1.280, 'AUD': 0.690, 'CAD': 0.746,
-        'HNL': 0.0406, 'AWG': 0.558, 'DOP': 0.0172, 'PAB': 1.000,
-        'CLP': 0.00126, 'CRC': 0.00163, 'ARS': 0.0119, 'ANG': 0.558,
-        'COP': 0.00026,  'BBD': 0.50, 'MXN': 0.0477, 'BOB': 0.144, 'BSD': 1.00,
-        'GYD': 0.0048, 'UYU': 0.025, 'DKK': 0.146, 'KYD': 1.20, 'BMD': 1.00, 
-        'VEB': 0.0000000248, 'VES': 0.000000248, 'BRL': 0.187, 'NIO': 0.0278
-    },
-    2021: {
-        'EUR': 1.183, 'GBP': 1.376, 'AUD': 0.727, 'CAD': 0.797,
-        'HNL': 0.0415, 'AWG': 0.558, 'DOP': 0.0176, 'PAB': 1.000,
-        'CLP': 0.00118, 'CRC': 0.00156, 'ARS': 0.00973, 'ANG': 0.558,
-        'COP': 0.00027, 'BBD': 0.50, 'MXN': 0.0492, 'BOB': 0.141, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.024, 'DKK': 0.155, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0.00000000002, 'VES': 0.00000002, 'BRL': 0.192, 'NIO': 0.0285
-        
-    },
-    2022: {
-        'EUR': 1.051, 'GBP': 1.209, 'AUD': 0.688, 'CAD': 0.764,
-        'HNL': 0.0408, 'AWG': 0.558, 'DOP': 0.0181, 'PAB': 1.000,
-        'CLP': 0.00117, 'CRC': 0.00155, 'ARS': 0.00597, 'ANG': 0.558,
-        'COP': 0.00021, 'BBD': 0.50, 'MXN': 0.0497, 'BOB': 0.141, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.025, 'DKK': 0.141, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0, 'VES': 0.000000001, 'BRL': 0.196, 'NIO': 0.0267
-    },
-    2023: {
-        'EUR': 1.096, 'GBP': 1.264, 'AUD': 0.676, 'CAD': 0.741,
-        'HNL': 0.0406, 'AWG': 0.558, 'DOP': 0.0177, 'PAB': 1.000,
-        'CLP': 0.00121, 'CRC': 0.00187, 'ARS': 0.00275, 'ANG': 0.558,
-        'COP': 0.00022, 'BBD': 0.50, 'MXN': 0.0564, 'BOB': 0.143, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.025, 'DKK': 0.148, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0, 'VES': 0.000000001, 'BRL': 0.194, 'NIO': 0.0267
-    },
-    2024: {
-        'EUR': 1.093, 'GBP': 1.267, 'AUD': 0.674, 'CAD': 0.742,
-        'HNL': 0.0405, 'AWG': 0.558, 'DOP': 0.0170, 'PAB': 1.000,
-        'CLP': 0.00111, 'CRC': 0.00192, 'ARS': 0.00121, 'ANG': 0.558,
-        'COP': 0.00022, 'BBD': 0.50, 'MXN': 0.0547, 'BOB': 0.142, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.024, 'DKK': 0.147, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0, 'VES': 0.000000001, 'BRL': 0.190, 'NIO': 0.0260 }
-}
-
-def get_trm(year):
-    """Gets TRM for a given year from the dictionary"""
-    return TRM_DICT.get(year)
-
-def get_exchange_rate(currency_code, year):
-    """Gets exchange rate for a given currency and year from the dictionary"""
-    year_rates = CURRENCY_RATES.get(year)
-    if year_rates:
-        return year_rates.get(currency_code)
-    return None
-
-def get_currency_code(moneda_text):
-    """Extracts the currency code from the 'Texto Moneda' field"""
-    currency_mapping = {
-        'HNL -Lempira hondureño': 'HNL',
-        'EUR - Euro': 'EUR',
-        'AWG - Florín holandés o de Aruba': 'AWG',
-        'DOP - Peso dominicano': 'DOP',
-        'PAB -Balboa panameña': 'PAB', 
-        'CLP - Peso chileno': 'CLP',
-        'CRC - Colón costarricense': 'CRC',
-        'ARS - Peso argentino': 'ARS',
-        'AUD - Dólar australiano': 'AUD',
-        'ANG - Florín holandés': 'ANG',
-        'CAD -Dólar canadiense': 'CAD',
-        'GBP - Libra esterlina': 'GBP',
-        'USD - Dolar estadounidense': 'USD',
-        'COP - Peso colombiano': 'COP',
-        'BBD - Dólar de Barbados o Baja': 'BBD',
-        'MXN - Peso mexicano': 'MXN',
-        'BOB - Boliviano': 'BOB',
-        'BSD - Dolar bahameño': 'BSD',
-        'GYD - Dólar guyanés': 'GYD',
-        'UYU - Peso uruguayo': 'UYU',
-        'DKK - Corona danesa': 'DKK',
-        'KYD - Dólar de las Caimanes': 'KYD',
-        'BMD - Dólar de las Bermudas': 'BMD',
-        'VEB - Bolívar venezolano': 'VEB',  
-        'VES - Bolívar soberano': 'VES',  
-        'BRL - Real brasilero': 'BRL',  
-        'NIO - Córdoba nicaragüense': 'NIO',
-    }
-    return currency_mapping.get(moneda_text)
-
-def get_valid_year(row, periodo_df):
-    """Extracts a valid year, handling missing values and format variations."""
-    try:
-        fkIdPeriodo = pd.to_numeric(row['fkIdPeriodo'], errors='coerce')
-        if pd.isna(fkIdPeriodo):  # Handle missing fkIdPeriodo
-            print(f"Warning: Missing fkIdPeriodo at index {row.name}. Skipping row.")
-            return None
-
-        matching_row = periodo_df[periodo_df['Id'] == fkIdPeriodo]
-        if matching_row.empty:
-            print(f"Warning: No matching Id found in periodoBR.xlsx for fkIdPeriodo {fkIdPeriodo} at index {row.name}. Skipping row.")
-            return None
-
-        year_str = matching_row['Año'].iloc[0]
-
-        try:
-            year = int(year_str)  # Try direct conversion to integer
-            return year
-        except (ValueError, TypeError):
-            try:
-                year = pd.to_datetime(year_str, errors='coerce').year  # Try datetime conversion, handle errors gracefully
-                if pd.isna(year):  # check for NaT which occurs when conversion fails.
-                    raise ValueError  # If conversion failed re-raise a ValueError.
-                return year
-
-            except ValueError:
-                print(f"Warning: Invalid year format '{year_str}' for fkIdPeriodo {fkIdPeriodo} at index {row.name}. Skipping row.")
-                return None
-
-    except Exception as e:
-        print(f"Error in get_valid_year for fkIdPeriodo {fkIdPeriodo} at index {row.name}: {e}")
-        return None
-
-def analyzeIncomes(file_path, output_file_path, periodo_file_path):
-
-    # Read the input Excel file into a DataFrame
+def analyze_incomes(file_path, output_file_path, periodo_file_path):
+    """Analyze income data"""
     df = pd.read_excel(file_path)
-
-    # Read the periodo Excel file into a DataFrame
     periodo_df = pd.read_excel(periodo_file_path)
 
-    # List of columns to maintain in the final output
     maintain_columns = [
         'fkIdPeriodo', 'fkIdEstado',
         'Año Creación', 'Año Envío', 'Usuario', 'Nombre',
@@ -987,53 +494,38 @@ def analyzeIncomes(file_path, output_file_path, periodo_file_path):
         'Ingresos - Valor_COP', 'Texto Moneda'
     ]
 
-    # Filter rows where 'RUBRO DE DECLARACIÓN' is 'Pasivo' and keep only the specified columns
     incomes_df = df.loc[df['RUBRO DE DECLARACIÓN'] == 'Ingreso', maintain_columns].copy()
-    
-    # Filter out rows with fkIdEstado == 1 BEFORE processing
     incomes_df = incomes_df[incomes_df['fkIdEstado'] != 1]
     
-    # Initialize new columns for calculated values
     incomes_df['Ingresos - Valor COP'] = 0.0
     incomes_df['TRM Aplicada'] = None
     incomes_df['Tasa USD'] = None
     incomes_df['Año Declaración'] = None 
     
-    # Iterate over each row in the DataFrame to process the data
     for index, row in incomes_df.iterrows():
         try:
-            # Get the valid year for the row
             year = get_valid_year(row, periodo_df)
             if year is None:
                 print(f"Warning: Could not determine valid year for index {index}. Skipping row.")
                 continue
             
-            # Assign the year to the 'Año Declaración' column
             incomes_df.loc[index, 'Año Declaración'] = year
             currency_code = get_currency_code(row['Texto Moneda'])
             
-            # If the currency is COP, no conversion is needed
             if currency_code == 'COP':
                 incomes_df.loc[index, 'Ingresos - Valor COP'] = float(row['Ingresos - Valor'])
                 incomes_df.loc[index, 'TRM Aplicada'] = 1.0
                 incomes_df.loc[index, 'Tasa USD'] = None
                 continue
             
-            # If the currency code is valid, proceed with conversion
             if currency_code:
                 trm = get_trm(year)
-                
-                if currency_code == 'USD':
-                    usd_rate = 1.0
-                else:
-                    usd_rate = get_exchange_rate(currency_code, year)
+                usd_rate = 1.0 if currency_code == 'USD' else get_exchange_rate(currency_code, year)
                 
                 if trm and usd_rate:
-                    # Calculate: Original Amount -> USD -> COP
                     usd_amount = float(row['Ingresos - Valor']) * usd_rate
                     cop_amount = usd_amount * trm
                     
-                    # Update the DataFrame with the calculated values
                     incomes_df.loc[index, 'Ingresos - Valor COP'] = cop_amount
                     incomes_df.loc[index, 'TRM Aplicada'] = trm
                     incomes_df.loc[index, 'Tasa USD'] = usd_rate
@@ -1046,162 +538,13 @@ def analyzeIncomes(file_path, output_file_path, periodo_file_path):
             print(f"Warning: Error processing row at index {index}: {e}")
             continue
     
-    # Save the processed DataFrame to an Excel file
     incomes_df.to_excel(output_file_path, index=False)
 
-# Define file paths for input and output
-file_path = 'src/data.xlsx'
-output_file_path = 'tables/cats/incomes.xlsx'
-periodo_file_path = 'src/periodoBR.xlsx'
-
-# Call the analyzeIncomes function to process the data
-analyzeIncomes(file_path, output_file_path, periodo_file_path)
-"@
-
-    # investments
-    Set-Content -Path "models/cats/investments.py" -Value @"
-import pandas as pd
-from datetime import datetime
-
-# Dictionary of historical TRM values (you can extend this with more years)
-TRM_DICT = {
-    2020: 3432.50,
-    2021: 3981.16,
-    2022: 4810.20,
-    2023: 4780.38,
-    2024: 4409.00
-}
-
-# Dictionary of currency to USD conversion rates
-CURRENCY_RATES = {
-    2020: {
-        'EUR': 1.141, 'GBP': 1.280, 'AUD': 0.690, 'CAD': 0.746,
-        'HNL': 0.0406, 'AWG': 0.558, 'DOP': 0.0172, 'PAB': 1.000,
-        'CLP': 0.00126, 'CRC': 0.00163, 'ARS': 0.0119, 'ANG': 0.558,
-        'COP': 0.00026,  'BBD': 0.50, 'MXN': 0.0477, 'BOB': 0.144, 'BSD': 1.00,
-        'GYD': 0.0048, 'UYU': 0.025, 'DKK': 0.146, 'KYD': 1.20, 'BMD': 1.00, 
-        'VEB': 0.0000000248, 'VES': 0.000000248, 'BRL': 0.187, 'NIO': 0.0278
-    },
-    2021: {
-        'EUR': 1.183, 'GBP': 1.376, 'AUD': 0.727, 'CAD': 0.797,
-        'HNL': 0.0415, 'AWG': 0.558, 'DOP': 0.0176, 'PAB': 1.000,
-        'CLP': 0.00118, 'CRC': 0.00156, 'ARS': 0.00973, 'ANG': 0.558,
-        'COP': 0.00027, 'BBD': 0.50, 'MXN': 0.0492, 'BOB': 0.141, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.024, 'DKK': 0.155, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0.00000000002, 'VES': 0.00000002, 'BRL': 0.192, 'NIO': 0.0285
-        
-    },
-    2022: {
-        'EUR': 1.051, 'GBP': 1.209, 'AUD': 0.688, 'CAD': 0.764,
-        'HNL': 0.0408, 'AWG': 0.558, 'DOP': 0.0181, 'PAB': 1.000,
-        'CLP': 0.00117, 'CRC': 0.00155, 'ARS': 0.00597, 'ANG': 0.558,
-        'COP': 0.00021, 'BBD': 0.50, 'MXN': 0.0497, 'BOB': 0.141, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.025, 'DKK': 0.141, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0, 'VES': 0.000000001, 'BRL': 0.196, 'NIO': 0.0267
-    },
-    2023: {
-        'EUR': 1.096, 'GBP': 1.264, 'AUD': 0.676, 'CAD': 0.741,
-        'HNL': 0.0406, 'AWG': 0.558, 'DOP': 0.0177, 'PAB': 1.000,
-        'CLP': 0.00121, 'CRC': 0.00187, 'ARS': 0.00275, 'ANG': 0.558,
-        'COP': 0.00022, 'BBD': 0.50, 'MXN': 0.0564, 'BOB': 0.143, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.025, 'DKK': 0.148, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0, 'VES': 0.000000001, 'BRL': 0.194, 'NIO': 0.0267
-    },
-    2024: {
-        'EUR': 1.093, 'GBP': 1.267, 'AUD': 0.674, 'CAD': 0.742,
-        'HNL': 0.0405, 'AWG': 0.558, 'DOP': 0.0170, 'PAB': 1.000,
-        'CLP': 0.00111, 'CRC': 0.00192, 'ARS': 0.00121, 'ANG': 0.558,
-        'COP': 0.00022, 'BBD': 0.50, 'MXN': 0.0547, 'BOB': 0.142, 'BSD': 1.00,
-        'GYD': 0.0047, 'UYU': 0.024, 'DKK': 0.147, 'KYD': 1.20, 'BMD': 1.00,
-        'VEB': 0, 'VES': 0.000000001, 'BRL': 0.190, 'NIO': 0.0260 }
-}
-
-def get_trm(year):
-    """Gets TRM for a given year from the dictionary"""
-    return TRM_DICT.get(year)
-
-def get_exchange_rate(currency_code, year):
-    """Gets exchange rate for a given currency and year from the dictionary"""
-    year_rates = CURRENCY_RATES.get(year)
-    if year_rates:
-        return year_rates.get(currency_code)
-    return None
-
-def get_currency_code(moneda_text):
-    """Extracts the currency code from the 'Texto Moneda' field"""
-    currency_mapping = {
-        'HNL -Lempira hondureño': 'HNL',
-        'EUR - Euro': 'EUR',
-        'AWG - Florín holandés o de Aruba': 'AWG',
-        'DOP - Peso dominicano': 'DOP',
-        'PAB -Balboa panameña': 'PAB', 
-        'CLP - Peso chileno': 'CLP',
-        'CRC - Colón costarricense': 'CRC',
-        'ARS - Peso argentino': 'ARS',
-        'AUD - Dólar australiano': 'AUD',
-        'ANG - Florín holandés': 'ANG',
-        'CAD -Dólar canadiense': 'CAD',
-        'GBP - Libra esterlina': 'GBP',
-        'USD - Dolar estadounidense': 'USD',
-        'COP - Peso colombiano': 'COP',
-        'BBD - Dólar de Barbados o Baja': 'BBD',
-        'MXN - Peso mexicano': 'MXN',
-        'BOB - Boliviano': 'BOB',
-        'BSD - Dolar bahameño': 'BSD',
-        'GYD - Dólar guyanés': 'GYD',
-        'UYU - Peso uruguayo': 'UYU',
-        'DKK - Corona danesa': 'DKK',
-        'KYD - Dólar de las Caimanes': 'KYD',
-        'BMD - Dólar de las Bermudas': 'BMD',
-        'VEB - Bolívar venezolano': 'VEB',  
-        'VES - Bolívar soberano': 'VES',  
-        'BRL - Real brasilero': 'BRL',  
-        'NIO - Córdoba nicaragüense': 'NIO',
-    }
-    return currency_mapping.get(moneda_text)
-
-def get_valid_year(row, periodo_df):
-    """Extracts a valid year, handling missing values and format variations."""
-    try:
-        fkIdPeriodo = pd.to_numeric(row['fkIdPeriodo'], errors='coerce')
-        if pd.isna(fkIdPeriodo):  # Handle missing fkIdPeriodo
-            print(f"Warning: Missing fkIdPeriodo at index {row.name}. Skipping row.")
-            return None
-
-        matching_row = periodo_df[periodo_df['Id'] == fkIdPeriodo]
-        if matching_row.empty:
-            print(f"Warning: No matching Id found in periodoBR.xlsx for fkIdPeriodo {fkIdPeriodo} at index {row.name}. Skipping row.")
-            return None
-
-        year_str = matching_row['Año'].iloc[0]
-
-        try:
-            year = int(year_str)  # Try direct conversion to integer
-            return year
-        except (ValueError, TypeError):
-            try:
-                year = pd.to_datetime(year_str, errors='coerce').year  # Try datetime conversion, handle errors gracefully
-                if pd.isna(year):  # check for NaT which occurs when conversion fails.
-                    raise ValueError  # If conversion failed re-raise a ValueError.
-                return year
-
-            except ValueError:
-                print(f"Warning: Invalid year format '{year_str}' for fkIdPeriodo {fkIdPeriodo} at index {row.name}. Skipping row.")
-                return None
-
-    except Exception as e:
-        print(f"Error in get_valid_year for fkIdPeriodo {fkIdPeriodo} at index {row.name}: {e}")
-        return None
-
-def analyzeInvest(file_path, output_file_path, periodo_file_path):
-
-    # Read the input Excel file into a DataFrame
+def analyze_investments(file_path, output_file_path, periodo_file_path):
+    """Analyze investment data"""
     df = pd.read_excel(file_path)
-
-    # Read the periodo Excel file into a DataFrame
     periodo_df = pd.read_excel(periodo_file_path)
 
-    # List of columns to maintain in the final output
     maintain_columns = [
         'fkIdPeriodo', 'fkIdEstado',
         'Año Creación', 'Año Envío', 'Usuario', 'Nombre',
@@ -1211,49 +554,35 @@ def analyzeInvest(file_path, output_file_path, periodo_file_path):
         'Inversiones - Valor COP', 'Texto Moneda'
     ]
     
-    # Filter rows where 'RUBRO DE DECLARACIÓN' is 'Pasivo' and keep only the specified columns
     invest_df = df.loc[df['RUBRO DE DECLARACIÓN'] == 'Inversión', maintain_columns].copy()
-    
-    # Filter out rows with fkIdEstado == 1 BEFORE processing
     invest_df = invest_df[invest_df['fkIdEstado'] != 1]
     
-    # Initialize new columns for calculated values
     invest_df['Inversiones - Valor COP'] = 0.0
     invest_df['TRM Aplicada'] = None
     invest_df['Tasa USD'] = None
     invest_df['Año Declaración'] = None 
     
-    # Iterate over each row in the DataFrame to process the data
     for index, row in invest_df.iterrows():
         try:
-            # Get the valid year for the row
             year = get_valid_year(row, periodo_df)
             if year is None:
                 print(f"Warning: Could not determine valid year for index {index}. Skipping row.")
                 continue
             
-            # Assign the year to the 'Año Declaración' column
             invest_df.loc[index, 'Año Declaración'] = year
             currency_code = get_currency_code(row['Texto Moneda'])
             
-            # If the currency is COP, no conversion is needed
             if currency_code == 'COP':
                 invest_df.loc[index, 'Inversiones - Valor COP'] = float(row['Inversiones - Valor'])
                 invest_df.loc[index, 'TRM Aplicada'] = 1.0
                 invest_df.loc[index, 'Tasa USD'] = None
                 continue
             
-            # If the currency code is valid, proceed with conversion
             if currency_code:
                 trm = get_trm(year)
-                
-                if currency_code == 'USD':
-                    usd_rate = 1.0
-                else:
-                    usd_rate = get_exchange_rate(currency_code, year)
+                usd_rate = 1.0 if currency_code == 'USD' else get_exchange_rate(currency_code, year)
                 
                 if trm and usd_rate:
-                    # Calculate: Original Amount -> USD -> COP
                     usd_amount = float(row['Inversiones - Valor']) * usd_rate
                     cop_amount = usd_amount * trm
                     
@@ -1269,51 +598,62 @@ def analyzeInvest(file_path, output_file_path, periodo_file_path):
             print(f"Warning: Error processing row at index {index}: {e}")
             continue
     
-    # Save the processed DataFrame to an Excel file
     invest_df.to_excel(output_file_path, index=False)
 
-# Define file paths for input and output
-file_path = 'src/data.xlsx'
-output_file_path = 'tables/cats/investments.xlsx'
-periodo_file_path = 'src/periodoBR.xlsx'
+def run_all_analyses():
+    """Run all analysis functions with their respective file paths"""
+    file_path = 'src/data.xlsx'
+    periodo_file_path = 'src/periodoBR.xlsx'
+    
+    analyze_banks(file_path, 'tables/cats/banks.xlsx', periodo_file_path)
+    analyze_debts(file_path, 'tables/cats/debts.xlsx', periodo_file_path)
+    analyze_goods(file_path, 'tables/cats/goods.xlsx', periodo_file_path)
+    analyze_incomes(file_path, 'tables/cats/incomes.xlsx', periodo_file_path)
+    analyze_investments(file_path, 'tables/cats/investments.xlsx', periodo_file_path)
 
-# Call the analyzeInvest function to process the data
-analyzeInvest(file_path, output_file_path, periodo_file_path)
+if __name__ == "__main__":
+    run_all_analyses()
 "@
 }
+
 function createNets {
     Write-Host "🏗️ Creating Nets" -ForegroundColor $YELLOW
     # Banks
-    Set-Content -Path "models/nets/bankNets.py" -Value @"
+    Set-Content -Path "models/nets.py" -Value @"
 import pandas as pd
 
-def analyzeBankNets(file_path, output_file_path):
-    # Read the Excel file
+# Common columns used across all analyses
+COMMON_COLUMNS = [
+    'Usuario', 'Nombre', 'Compañía', 'Cargo',
+    'fkIdPeriodo', 'fkIdEstado',
+    'Año Creación', 'Año Envío',
+    'RUBRO DE DECLARACIÓN', 'fkIdDeclaracion',
+    'Año Declaración'
+]
+
+# Base groupby columns for summaries
+BASE_GROUPBY = ['Usuario', 'Nombre', 'Compañía', 'Cargo', 'fkIdPeriodo', 'Año Declaración', 'Año Creación']
+
+def analyze_banks(file_path, output_file_path):
+    """Analyze bank accounts data"""
     df = pd.read_excel(file_path)
 
-    # Columns to maintain
-    maintain_columns = [
-        'Usuario', 'Nombre', 'Compañía', 'Cargo',
-        'fkIdPeriodo', 'fkIdEstado',
-        'Año Creación', 'Año Envío',
-        'RUBRO DE DECLARACIÓN', 'fkIdDeclaracion',
+    # Specific columns for banks
+    bank_columns = [
         'Banco - Entidad', 'Banco - Tipo Cuenta',
         'Banco - fkIdPaís', 'Banco - Nombre País',
         'Banco - Saldo', 'Banco - Comentario',
-        'Banco - Saldo COP', 'Año Declaración'
+        'Banco - Saldo COP'
     ]
-
-    df = df[maintain_columns]
     
-    # Group by user/company/year/etc.
-    groupby_columns = ['Usuario', 'Nombre', 'Compañía', 'Cargo', 'fkIdPeriodo', 'Año Declaración', 'Año Creación']
+    df = df[COMMON_COLUMNS + bank_columns]
     
     # Create a temporary combination column for counting
     df_temp = df.copy()
     df_temp['Bank_Account_Combo'] = df['Banco - Entidad'] + "|" + df['Banco - Tipo Cuenta']
     
     # Perform all aggregations
-    summary = df_temp.groupby(groupby_columns).agg(
+    summary = df_temp.groupby(BASE_GROUPBY).agg(
         **{
             'Cant_Bancos': pd.NamedAgg(column='Banco - Entidad', aggfunc='nunique'),
             'Cant_Cuentas': pd.NamedAgg(column='Bank_Account_Combo', aggfunc='nunique'),
@@ -1321,444 +661,244 @@ def analyzeBankNets(file_path, output_file_path):
         }
     ).reset_index()
 
-    # Write to Excel
     summary.to_excel(output_file_path, index=False)
     return summary
 
-# Example usage
-file_path = 'tables/cats/banks.xlsx'
-output_file_path = 'tables/nets/bankNets.xlsx'
-summary = analyzeBankNets(file_path, output_file_path)
-"@
-
-    # Debts
-    
-    Set-Content -Path "models/nets/debtNets.py" -Value @"  
-import pandas as pd
-
-def analyzeDebtNets(file_path, output_file_path):
-    # Read the Excel file
+def analyze_debts(file_path, output_file_path):
+    """Analyze debts data"""
     df = pd.read_excel(file_path)
 
-    # Columns to maintain
-    maintain_columns = [
-        'Usuario', 'Nombre', 'Compañía', 'Cargo',
-        'fkIdPeriodo', 'fkIdEstado',
-        'Año Creación', 'Año Envío',
-        'RUBRO DE DECLARACIÓN', 'fkIdDeclaracion',
-        'Pasivos - Entidad Personas', 'Pasivos - Tipo Obligación', 'Pasivos - Valor', 'Pasivos - Comentario',
-        'Pasivos - Valor COP',
-        'Texto Moneda', 'Año Declaración'
+    # Specific columns for debts
+    debt_columns = [
+        'Pasivos - Entidad Personas', 'Pasivos - Tipo Obligación', 
+        'Pasivos - Valor', 'Pasivos - Comentario',
+        'Pasivos - Valor COP', 'Texto Moneda'
     ]
-
-    df = df[maintain_columns]
     
-    groupby_columns = ['Usuario', 'Nombre', 'Compañía', 'Cargo', 'fkIdPeriodo', 'Año Declaración', 'Año Creación']
-
+    df = df[COMMON_COLUMNS + debt_columns]
+    
     # Calculate total Pasivos and count occurrences
-    summary = df.groupby(groupby_columns).agg({      
+    summary = df.groupby(BASE_GROUPBY).agg({      
         'Pasivos - Valor COP': 'sum',
-        'Pasivos - Entidad Personas': 'count'  # Count occurrences
+        'Pasivos - Entidad Personas': 'count'
     }).reset_index()
 
-    # Rename the count column for clarity
-    summary = summary.rename(columns={'Pasivos - Entidad Personas': 'Cantidad de Entidades'})
+    # Rename columns for clarity
+    summary = summary.rename(columns={
+        'Pasivos - Entidad Personas': 'Cant_Deudas',
+        'Pasivos - Valor COP': 'Total Pasivos'
+    })
 
-    # Save the summary to a new Excel file or process it further
     summary.to_excel(output_file_path, index=False)
-
     return summary
 
-# Example usage
-file_path = 'tables/cats/debts.xlsx'
-output_file_path = 'tables/nets/debtNets.xlsx'
-summary = analyzeDebtNets(file_path, output_file_path)
-"@
-
-    # goods
-    
-    Set-Content -Path "models/nets/goodNets.py" -Value @"  
-import pandas as pd
-
-def analyzeGoodNetsQT(file_path, output_file_path):
-    # Read the Excel file
+def analyze_goods(file_path, output_file_path):
+    """Analyze goods/assets data"""
     df = pd.read_excel(file_path)
     
-    # Columns to maintain
-    maintain_columns = [
-        'Usuario', 'Nombre', 'Compañía', 'Cargo',
-        'fkIdPeriodo', 'fkIdEstado',
-        'Año Creación', 'Año Envío', 
-        'RUBRO DE DECLARACIÓN', 'fkIdDeclaracion',
+    # Specific columns for goods
+    goods_columns = [
         'Bienes - Activo', 'Bienes - % Propiedad',
         'Bienes - Propietario', 'Bienes - Valor Comercial',
-        'Bienes - Comentario',
-        'Bienes - Valor Comercial COP',
-        'Bienes - Valor Corregido', 'Año Declaración'
+        'Bienes - Comentario', 'Bienes - Valor Comercial COP',
+        'Bienes - Valor Corregido'
     ]
     
-    df = df[maintain_columns]
+    df = df[COMMON_COLUMNS + goods_columns]
 
-    # Group by including 'Nombre', 'Compañía', 'Cargo'
-    summary = df.groupby(['Usuario', 'Nombre', 'Compañía', 'Cargo', 'fkIdPeriodo', 'Año Declaración', 'Año Creación']).agg({
+    summary = df.groupby(BASE_GROUPBY).agg({
         'Bienes - Valor Corregido': 'sum',
         'Bienes - Activo': 'count' 
     }).reset_index()
 
-    # Rename the count column for clarity
-    summary = summary.rename(columns={'Bienes - Activo': 'Cantidad de Bienes'})
-    
-    # Rename 'Bienes' column for clarity
-    summary = summary.rename(columns={'Bienes - Valor Corregido': 'Bienes - Valor Corregido'})
+    # Rename columns for clarity
+    summary = summary.rename(columns={
+        'Bienes - Activo': 'Cantidad de Bienes',
+        'Bienes - Valor Corregido': 'Total Bienes'
+    })
 
-    # Save the summary
     summary.to_excel(output_file_path, index=False) 
-
     return summary
 
-# Example usage (keep these the same)
-file_path = 'tables/cats/goods.xlsx'
-output_file_path = 'tables/nets/goodNets.xlsx'
-summary = analyzeGoodNetsQT(file_path, output_file_path)
-"@
-
-    # incomes
-    
-    Set-Content -Path "models/nets/incomeNets.py" -Value @"  
-import pandas as pd
-
-def analyzeIncomeNetsQT(file_path, output_file_path):
-    # Read the Excel file
+def analyze_incomes(file_path, output_file_path):
+    """Analyze income data"""
     df = pd.read_excel(file_path)
     
-    # Columns to maintain 
-    maintain_columns = [
-        'Usuario', 'Nombre', 'Compañía', 'Cargo',
-        'fkIdPeriodo', 'fkIdEstado',
-        'Año Creación', 'Año Envío',
-        'RUBRO DE DECLARACIÓN', 'fkIdDeclaracion',
+    # Specific columns for incomes
+    income_columns = [
         'Ingresos - fkIdConcepto', 'Ingresos - Texto Concepto',
         'Ingresos - Valor', 'Ingresos - Comentario',
         'Ingresos - Otros', 'Ingresos - Valor COP',
-        'Texto Moneda', 'Año Declaración'
+        'Texto Moneda'
     ]
 
-    df = df[maintain_columns]
-    
-    groupby_columns = ['Usuario', 'Nombre', 'Compañía', 'Cargo', 'fkIdPeriodo', 'Año Declaración', 'Año Creación']
+    df = df[COMMON_COLUMNS + income_columns]
     
     # Calculate Ingresos and count occurrences
-    summary = df.groupby(groupby_columns).agg({
+    summary = df.groupby(BASE_GROUPBY).agg({
         'Ingresos - Valor COP': 'sum',
-        'Ingresos - Texto Concepto': 'count'  # 
+        'Ingresos - Texto Concepto': 'count'
     }).reset_index()
 
-    # Rename the count column for clarity
-    summary = summary.rename(columns={'Ingresos - Texto Concepto': 'Cantidad de Ingresos'})
+    # Rename columns for clarity
+    summary = summary.rename(columns={
+        'Ingresos - Texto Concepto': 'Cantidad de Ingresos',
+        'Ingresos - Valor COP': 'Total Ingresos'
+    })
 
-    # Rename the count column for clarity
-    summary = summary.rename(columns={'Ingresos - Texto Concepto': 'Cantidad de Ingresos'})
-
-    # Save the summary to a new Excel file or process it further
     summary.to_excel(output_file_path, index=False)
-
     return summary
 
-# Example usage (replace with your actual file paths)
-file_path = 'tables/cats/incomes.xlsx'  # Update this
-output_file_path = 'tables/nets/incomeNets.xlsx' # Update this
-summary = analyzeIncomeNetsQT(file_path, output_file_path)
-"@
-
-    # investments
-    
-    Set-Content -Path "models/nets/investNets.py" -Value @"  
-import pandas as pd
-
-def analyzeInvestNetsQT(file_path, output_file_path):
-    # Read the Excel file
+def analyze_investments(file_path, output_file_path):
+    """Analyze investments data"""
     df = pd.read_excel(file_path)
     
-    # Columns to maintain
-    maintain_columns = [
-        'Usuario', 'Nombre', 'Compañía', 'Cargo',
-        'fkIdPeriodo', 'fkIdEstado',
-        'Año Creación', 'Año Envío',
-        'RUBRO DE DECLARACIÓN', 'fkIdDeclaracion',
+    # Specific columns for investments
+    invest_columns = [
         'Inversiones - Tipo Inversión', 'Inversiones - Entidad',
         'Inversiones - Valor', 'Inversiones - Comentario',
-        'Inversiones - Valor COP',
-        'Texto Moneda', 'Año Declaración'  
+        'Inversiones - Valor COP', 'Texto Moneda'
     ]
     
-    df = df[maintain_columns]
+    df = df[COMMON_COLUMNS + invest_columns]
     
-    groupby_columns = ['Usuario', 'Nombre', 'Compañía', 'Cargo', 'fkIdPeriodo', 'Año Declaración', 'Año Creación', 'Inversiones - Tipo Inversión']
-
-    # Calculate total 'Inversiones and count occurences
-    summary = df.groupby(groupby_columns).agg( 
+    # Calculate total Inversiones and count occurrences
+    summary = df.groupby(BASE_GROUPBY + ['Inversiones - Tipo Inversión']).agg( 
         {'Inversiones - Valor COP': 'sum',
          'Inversiones - Tipo Inversión': 'count'}
-    ).rename(columns={'Inversiones - Tipo Inversión': 'Cantidad de Inversiones'}).reset_index()
+    ).rename(columns={
+        'Inversiones - Tipo Inversión': 'Cantidad de Inversiones',
+        'Inversiones - Valor COP': 'Total Inversiones'
+    }).reset_index()
     
-    # Write the merged_summary DataFrame to the Excel file
     summary.to_excel(output_file_path, index=False)
-
     return summary 
 
-# Example usage
-file_path = 'tables/cats/investments.xlsx'
-output_file_path = 'tables/nets/investNets.xlsx'
-summary = analyzeInvestNetsQT(file_path, output_file_path)
-"@
+def calculate_assets(banks_file, goods_file, invests_file, output_file):
+    """Calculate total assets by combining banks, goods and investments"""
+    banks = pd.read_excel(banks_file)
+    goods = pd.read_excel(goods_file)
+    invests = pd.read_excel(invests_file)
 
-    # assetNets
-    
-    Set-Content -Path "models/nets/assetNets.py" -Value @"  
-import pandas as pd
-
-# Define common columns
-COMMON_COLUMNS = ['Usuario', 'Nombre', 'Compañía', 'Cargo', 'fkIdPeriodo', 'Año Declaración', 'Año Creación']
-
-def analyzeGoodNets(file_path):
-    df = pd.read_excel(file_path)
-    goods = COMMON_COLUMNS + ['Bienes - Valor Corregido', 'Cantidad de Bienes']
-    # Sum both the values and the counts
-    summary = df.groupby(COMMON_COLUMNS).agg({
-        'Bienes - Valor Corregido': 'sum',
-        'Cantidad de Bienes': 'sum'
-    }).reset_index()
-    return summary
-
-def analyzeBankNets(file_path):
-    df = pd.read_excel(file_path)
-    banks = COMMON_COLUMNS + ['Banco - Saldo COP', 'Cant_Bancos', 'Cant_Cuentas']
-    # Sum both the values and the counts
-    summary = df.groupby(COMMON_COLUMNS).agg({
-        'Banco - Saldo COP': 'sum',
-        'Cant_Bancos': 'sum',
-        'Cant_Cuentas': 'sum'
-    }).reset_index()
-    return summary
-
-def analyzeInvestNets(file_path):
-    df = pd.read_excel(file_path)
-    investments = COMMON_COLUMNS + ['Inversiones - Valor COP', 'Cantidad de Inversiones']
-    # Sum both the values and the counts
-    summary = df.groupby(COMMON_COLUMNS).agg({
-        'Inversiones - Valor COP': 'sum',
+    # Group investments by base columns (summing across types)
+    invests_grouped = invests.groupby(BASE_GROUPBY).agg({
+        'Total Inversiones': 'sum',
         'Cantidad de Inversiones': 'sum'
     }).reset_index()
-    return summary
 
-def calculateNetWorth(banks_file_path, goods_file_path, invests_file_path, output_file_path):
-    banks_summary = analyzeBankNets(banks_file_path)
-    goods_summary = analyzeGoodNets(goods_file_path)
-    invests_summary = analyzeInvestNets(invests_file_path)
-
-    # Merge the three summaries using the common columns
-    merged_df = pd.merge(goods_summary, banks_summary, on=COMMON_COLUMNS, how='outer')
-    merged_df = pd.merge(merged_df, invests_summary, on=COMMON_COLUMNS, how='outer')
-
-    merged_df.fillna(0, inplace=True)
+    # Merge all three dataframes
+    merged = pd.merge(goods, banks, on=BASE_GROUPBY, how='outer')
+    merged = pd.merge(merged, invests_grouped, on=BASE_GROUPBY, how='outer')
+    merged.fillna(0, inplace=True)
 
     # Calculate total assets
-    merged_df['Total Activos'] = (
-        merged_df['Bienes - Valor Corregido'] + 
-        merged_df['Banco - Saldo COP'] + 
-        merged_df['Inversiones - Valor COP']
+    merged['Total Activos'] = (
+        merged['Total Bienes'] + 
+        merged['Banco - Saldo COP'] + 
+        merged['Total Inversiones']
     )
 
-    # Reorder columns for better readability (optional)
-    final_columns = COMMON_COLUMNS + [
-        'Bienes - Valor Corregido', 'Cantidad de Bienes',
+    # Reorder and rename columns
+    final_columns = BASE_GROUPBY + [
+        'Total Bienes', 'Cantidad de Bienes',
         'Banco - Saldo COP', 'Cant_Bancos', 'Cant_Cuentas',
-        'Inversiones - Valor COP', 'Cantidad de Inversiones',
+        'Total Inversiones', 'Cantidad de Inversiones',
         'Total Activos'
     ]
-    merged_df = merged_df[final_columns]
+    merged = merged[final_columns]
 
-    merged_df.to_excel(output_file_path, index=False)
+    merged.to_excel(output_file, index=False)
+    return merged
 
-    return merged_df
+def calculate_net_worth(debts_file, assets_file, output_file):
+    """Calculate net worth by combining assets and debts"""
+    debts = pd.read_excel(debts_file)
+    assets = pd.read_excel(assets_file)
 
-goods_file_path = 'tables/nets/goodNets.xlsx'
-banks_file_path = 'tables/nets/bankNets.xlsx'
-invests_file_path = 'tables/nets/investNets.xlsx'
-output_file_path = 'tables/nets/assetNets.xlsx'  
-
-net_worth_data = calculateNetWorth(banks_file_path, goods_file_path, invests_file_path, output_file_path)
-"@
-
-    # debtLevel
-    
-    Set-Content -Path "models/nets/debtLevel.py" -Value @"  
-import pandas as pd
-
-# Define common columns
-COMMON_COLUMNS = ['Usuario', 'Nombre', 'Compañía', 'Cargo', 'fkIdPeriodo', 'Año Declaración', 'Año Creación']
-
-def analyzeDebtNets(file_path):
-    df = pd.read_excel(file_path)
-    summary = df.groupby(COMMON_COLUMNS)['Pasivos - Valor'].sum().reset_index()
-    return summary
-
-def analyzeAssetNets(file_path):
-    df = pd.read_excel(file_path)
-    summary = df.groupby(COMMON_COLUMNS)['Total Activos'].sum().reset_index()
-    return summary
-
-def calculateDebtLevel(debts_file_path, assets_file_path, output_file_path):
-    debts_summary = analyzeDebtNets(debts_file_path)
-    assets_summary = analyzeAssetNets(assets_file_path)
-
-    # Merge the two summaries based on common columns
-    merged_df = pd.merge(debts_summary, assets_summary, on=COMMON_COLUMNS, how='outer')
-
-    # Calculate the 'Nivel Endeudamiento' (debt / assets) * 100 to get percentage
-    merged_df['Nivel Endeudamiento'] = (merged_df['Pasivos - Valor'] / merged_df['Total Activos']) * 100
-
-    # Handle potential division by zero errors and format as percentage
-    merged_df['Nivel Endeudamiento'] = merged_df['Nivel Endeudamiento'].replace([float('inf'), float('-inf')], float('nan'))      
-    merged_df['Nivel Endeudamiento'] = merged_df['Nivel Endeudamiento'].map(lambda x: '{:.2f}%'.format(x) if pd.notna(x) else 'N/A')  # Format as percentage
-
-    # Save the merged DataFrame to the output file
-    merged_df.to_excel(output_file_path, index=False)
-    return merged_df
-
-# Example usage (replace with your file paths)
-debts_file_path = 'tables/cats/debts.xlsx'
-assets_file_path = 'tables/nets/assetNets.xlsx'
-output_file_path = 'tables/nets/debtLevel.xlsx'
-
-net_worth_data = calculateDebtLevel(debts_file_path, assets_file_path, output_file_path)
-"@
-
-    # leverage
-    
-    Set-Content -Path "models/nets/levErage.py" -Value @"  
-import pandas as pd
-
-# Define common columns
-COMMON_COLUMNS = ['Usuario', 'Nombre', 'Compañía', 'Cargo', 'fkIdPeriodo', 'Año Declaración', 'Año Creación']
-
-def analyzeNetWorth(file_path):
-    df = pd.read_excel(file_path)
-    
-    # Group by all columns except 'Total Patrimonio', then sum 'Total Patrimonio'
-    summary = df.groupby(COMMON_COLUMNS)['Total Patrimonio'].sum().reset_index()
-    
-    return summary
-
-def analyzeAssetNets(file_path):
-    df = pd.read_excel(file_path)
-    
-    # Group by all columns except 'Total Activos', then sum 'Total Activos'
-    summary = df.groupby(COMMON_COLUMNS)['Total Activos'].sum().reset_index()
-    
-    return summary
-
-def calculateLevErage(worths_file_path, assets_file_path, output_file_path):
-    worths_summary = analyzeNetWorth(worths_file_path)
-    assets_summary = analyzeAssetNets(assets_file_path)
-
-    # Merge the two summaries based on common columns - INCLUDING Nombre, Compañía, Cargo
-    merged_summary = pd.merge(worths_summary, assets_summary, on=COMMON_COLUMNS, how='left')
-
-    # Calculate leverage
-    merged_summary['Apalancamiento'] = (merged_summary['Total Patrimonio'] / merged_summary['Total Activos']) * 100
-    merged_summary['Apalancamiento'] = merged_summary['Apalancamiento'].map("{:.2f}%".format)  # Format as percentage
-
-    # Save to Excel
-    merged_summary.to_excel(output_file_path, index=False)
-    
-    return merged_summary
-
-
-# Example usage (replace with your file paths)
-worths_file_path = 'tables/nets/worthNets.xlsx'
-assets_file_path = 'tables/nets/assetNets.xlsx'
-output_file_path = 'tables/nets/levErage.xlsx'
-
-net_worth_data = calculateLevErage(worths_file_path, assets_file_path, output_file_path)
-"@
-
-    # worth
-    
-    Set-Content -Path "models/nets/worthNets.py" -Value @"  
-import pandas as pd
-
-# Define common columns
-COMMON_COLUMNS = ['Usuario', 'Nombre', 'Compañía', 'Cargo', 'fkIdPeriodo', 'Año Declaración', 'Año Creación']
-
-def analyzeDebtNets(file_path):
-    df = pd.read_excel(file_path)
-    # Sum both the debt values and the count of entities
-    summary = df.groupby(COMMON_COLUMNS).agg({
-        'Pasivos - Valor COP': 'sum',
-        'Cantidad de Entidades': 'sum'
-    }).reset_index()
-    summary = summary.rename(columns=
-    {'Pasivos - Valor COP': 'Total Pasivos',
-    'Cantidad de Entidades': 'Cant_Deudas'})
-    return summary
-
-def analyzeAssetNets(file_path):
-    df = pd.read_excel(file_path)
-    # Sum all asset-related columns (values and counts)
-    summary = df.groupby(COMMON_COLUMNS).agg({
-        'Total Activos': 'sum',
-        'Cantidad de Bienes': 'sum',
-        'Cant_Bancos': 'sum',
-        'Cant_Cuentas': 'sum',
-        'Cantidad de Inversiones': 'sum'
-    }).reset_index()
-    summary = summary.rename(columns=
-    {'Cantidad de Bienes': 'Cant_Bienes',
-    'Cantidad de Inversiones': 'Cant_Inversiones'})
-    return summary
-
-def calculateNetWorth(debts_file_path, assets_file_path, output_file_path):
-    debts_summary = analyzeDebtNets(debts_file_path)
-    assets_summary = analyzeAssetNets(assets_file_path)
-
-    # Merge the summaries including all count columns
-    merged_summary = pd.merge(
-        assets_summary, 
-        debts_summary, 
-        on=COMMON_COLUMNS, 
-        how='outer', 
-        suffixes=('_activos', '_pasivos')
+    # Merge the summaries
+    merged = pd.merge(
+        assets, 
+        debts, 
+        on=BASE_GROUPBY, 
+        how='outer'
     )
-
-    merged_summary.fillna(0, inplace=True)
+    merged.fillna(0, inplace=True)
     
     # Calculate net worth
-    merged_summary['Total Patrimonio'] = merged_summary['Total Activos'] - merged_summary['Total Pasivos']
+    merged['Total Patrimonio'] = merged['Total Activos'] - merged['Total Pasivos']
     
-    # Reorder columns for better readability (optional)
-    final_columns = COMMON_COLUMNS + [
+    # Final column order
+    final_columns = BASE_GROUPBY + [
         'Total Activos',
-        'Cant_Bienes',
+        'Cantidad de Bienes',
         'Cant_Bancos',
         'Cant_Cuentas',
-        'Cant_Inversiones',
+        'Cantidad de Inversiones',
         'Total Pasivos',
         'Cant_Deudas',
         'Total Patrimonio'
     ]
-    merged_summary = merged_summary[final_columns]
+    merged = merged[final_columns]
     
-    merged_summary.to_excel(output_file_path, index=False)
+    merged.to_excel(output_file, index=False)
+    return merged
 
-    return merged_summary
+def run_all_analyses():
+    """Run all analyses in sequence with default file paths"""
+    # Individual analyses
+    bank_summary = analyze_banks(
+        'tables/cats/banks.xlsx',
+        'tables/nets/bankNets.xlsx'
+    )
+    
+    debt_summary = analyze_debts(
+        'tables/cats/debts.xlsx',
+        'tables/nets/debtNets.xlsx'
+    )
+    
+    goods_summary = analyze_goods(
+        'tables/cats/goods.xlsx',
+        'tables/nets/goodNets.xlsx'
+    )
+    
+    income_summary = analyze_incomes(
+        'tables/cats/incomes.xlsx',
+        'tables/nets/incomeNets.xlsx'
+    )
+    
+    invest_summary = analyze_investments(
+        'tables/cats/investments.xlsx',
+        'tables/nets/investNets.xlsx'
+    )
+    
+    # Combined analyses
+    assets_summary = calculate_assets(
+        'tables/nets/bankNets.xlsx',
+        'tables/nets/goodNets.xlsx',
+        'tables/nets/investNets.xlsx',
+        'tables/nets/assetNets.xlsx'
+    )
+    
+    net_worth_summary = calculate_net_worth(
+        'tables/nets/debtNets.xlsx',
+        'tables/nets/assetNets.xlsx',
+        'tables/nets/worthNets.xlsx'
+    )
+    
+    return {
+        'bank_summary': bank_summary,
+        'debt_summary': debt_summary,
+        'goods_summary': goods_summary,
+        'income_summary': income_summary,
+        'invest_summary': invest_summary,
+        'assets_summary': assets_summary,
+        'net_worth_summary': net_worth_summary
+    }
 
-# Example usage
-debts_file_path = 'tables/nets/debtNets.xlsx'
-assets_file_path = 'tables/nets/assetNets.xlsx'
-output_file_path = 'tables/nets/worthNets.xlsx'  
-
-net_worth_data = calculateNetWorth(debts_file_path, assets_file_path, output_file_path)
+if __name__ == '__main__':
+    # Run all analyses when script is executed
+    results = run_all_analyses()
+    print("All nets analyses completed successfully!")
 "@
 }
 
@@ -1771,15 +911,7 @@ Set-Content -Path "models/trends/trends.py" -Value @"
 import pandas as pd
 
 def get_trend_symbol(value):
-    """
-    Determine the trend symbol based on the percentage change.
     
-    Args:
-        value (str): Percentage change as a string (e.g., '10.00%').
-    
-    Returns:
-        str: Trend symbol (📈, 📉, ➡️).
-    """
     try:
         value_float = float(value.strip('%')) / 100
         if pd.isna(value_float):
@@ -1794,16 +926,7 @@ def get_trend_symbol(value):
         return "➡️"  # handle any conversion errors
 
 def calculate_variation(df, column):
-    """
-    Calculate the absolute and relative variation year-over-year for a specific column.
-    
-    Args:
-        df (pd.DataFrame): Input DataFrame with user data.
-        column (str): Column name to calculate variations for.
-    
-    Returns:
-        pd.DataFrame: DataFrame with added variation columns for the specified column.
-    """
+
     # Sort by Usuario and Año Declaración
     df = df.sort_values(by=['Usuario', 'Año Declaración'])
     
@@ -1826,16 +949,7 @@ def calculate_variation(df, column):
     return df
 
 def embed_trend_symbols(df, columns):
-    """
-    Embed trend symbols into the variation values for specified columns.
-    
-    Args:
-        df (pd.DataFrame): Input DataFrame with variation data.
-        columns (list): List of column names to embed trend symbols into.
-    
-    Returns:
-        pd.DataFrame: DataFrame with trend symbols embedded in variation values.
-    """
+
     for col in columns:
         absolute_col = f'{col} Var. Abs.'
         relative_col = f'{col} Var. Rel.'
@@ -1851,41 +965,17 @@ def embed_trend_symbols(df, columns):
     return df
 
 def calculate_leverage(df):
-    """
-    Calculate Leverage as a percentage (Patrimonio / Activos * 100).
-    
-    Args:
-        df (pd.DataFrame): Input DataFrame with user data.
-    
-    Returns:
-        pd.DataFrame: DataFrame with added Leverage column.
-    """
+
     df['Apalancamiento'] = (df['Patrimonio'] / df['Activos']) * 100
     return df
 
 def calculate_debt_level(df):
-    """
-    Calculate Debt Level as a percentage (Pasivos / Activos * 100).
-    
-    Args:
-        df (pd.DataFrame): Input DataFrame with user data.
-    
-    Returns:
-        pd.DataFrame: DataFrame with added Debt Level column.
-    """
+
     df['Endeudamiento'] = (df['Pasivos'] / df['Activos']) * 100
     return df
 
 def process_asset_data(df_assets):
-    """
-    Process the asset data to calculate total bank balance, number of banks, total assets, total investments, and their variations.
-    
-    Args:
-        df_assets (pd.DataFrame): DataFrame with asset data.
-    
-    Returns:
-        pd.DataFrame: Processed DataFrame with additional columns.
-    """
+
     # Group by Usuario and Año Declaración to calculate total bank balance, number of banks, total assets, total investments, and number of investments
     df_assets_grouped = df_assets.groupby(['Usuario', 'Año Declaración']).agg(
         BancoSaldo=('Banco - Saldo COP', 'sum'),
@@ -1908,15 +998,7 @@ def process_asset_data(df_assets):
     return df_assets_grouped
 
 def process_income_data(df_income):
-    """
-    Process the income data to calculate total income, number of incomes, and their variations.
-    
-    Args:
-        df_income (pd.DataFrame): DataFrame with income data.
-    
-    Returns:
-        pd.DataFrame: Processed DataFrame with additional columns.
-    """
+
     # Group by Usuario and Año Declaración to calculate total income and number of incomes
     df_income_grouped = df_income.groupby(['Usuario', 'Año Declaración']).agg(
         Ingresos=('Ingresos - Valor COP', 'sum'),
@@ -1932,13 +1014,7 @@ def process_income_data(df_income):
     return df_income_grouped
 
 def save_results(df, excel_filename="tables/trends/trends.xlsx"):
-    """
-    Save the DataFrame as an Excel file.
-    
-    Args:
-        df (pd.DataFrame): DataFrame to save.
-        excel_filename (str): Name of the Excel file.
-    """
+
     try:
         # Save as Excel
         df.to_excel(excel_filename, index=False)
@@ -1995,429 +1071,6 @@ def main():
         
         # Save results
         save_results(df)
-    except FileNotFoundError:
-        print("Error: One of the required files was not found.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-if __name__ == "__main__":
-    main()
-"@
-
-# filters
-   
-Set-Content -Path "models/trends/filters.py" -Value @"
-import pandas as pd
-import numpy as np
-import json
-import os
-import logging
-
-# Configure logging
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
-
-# Suppress FutureWarning for downcasting in replace
-pd.set_option('future.no_silent_downcasting', True)
-
-def get_trend_symbol(value):
-    """
-    Determine the trend symbol based on the percentage change.
-    
-    Args:
-        value (str): Percentage change as a string (e.g., '10.00%').
-    
-    Returns:
-        str: Trend symbol (📈, 📉, ➡️).
-    """
-    try:
-        value_float = float(value.strip('%')) / 100
-        if pd.isna(value_float):
-            return "➡️"  # neutral for first entry
-        elif value_float > 0.1:  # more than 10% increase
-            return "📈"
-        elif value_float < -0.1:  # more than 10% decrease
-            return "📉"
-        else:
-            return "➡️"  # relatively stable
-    except Exception as e:
-        return "➡️"  # handle any conversion errors
-
-def calculate_variation(df, column):
-    """
-    Calculate the absolute and relative variation year-over-year for a specific column.
-    
-    Args:
-        df (pd.DataFrame): Input DataFrame with user data.
-        column (str): Column name to calculate variations for.
-    
-    Returns:
-        pd.DataFrame: DataFrame with added variation columns for the specified column.
-    """
-    # Sort by Usuario and Año Declaración
-    df = df.sort_values(by=['Usuario', 'Año Declaración'])
-    
-    # Calculate absolute and relative variations
-    absolute_col = f'{column} Var. Abs.'
-    relative_col = f'{column} Var. Rel.'
-    
-    df[absolute_col] = df.groupby('Usuario')[column].diff()
-    
-    # Fill missing values with forward fill and calculate percentage change
-    df[relative_col] = (
-        df.groupby('Usuario')[column]
-        .ffill()  # Forward fill missing values
-        .pct_change(fill_method=None) * 100  # Explicitly set fill_method=None
-    )
-    
-    # Format relative variation as a percentage string
-    df[relative_col] = df[relative_col].apply(lambda x: f"{x:.2f}%" if not pd.isna(x) else "0.00%")
-    
-    return df
-
-def embed_trend_symbols(df, columns):
-    """
-    Embed trend symbols into the variation values for specified columns.
-    
-    Args:
-        df (pd.DataFrame): Input DataFrame with variation data.
-        columns (list): List of column names to embed trend symbols into.
-    
-    Returns:
-        pd.DataFrame: DataFrame with trend symbols embedded in variation values.
-    """
-    for col in columns:
-        absolute_col = f'{col} Var. Abs.'
-        relative_col = f'{col} Var. Rel.'
-        
-        # Add trend symbols to the variation values
-        df[absolute_col] = df.apply(
-            lambda row: f"{row[absolute_col]} {get_trend_symbol(row[relative_col])}", axis=1
-        )
-        df[relative_col] = df.apply(
-            lambda row: f"{row[relative_col]} {get_trend_symbol(row[relative_col])}", axis=1
-        )
-    
-    return df
-
-def calculate_leverage(df):
-    """
-    Calculate Leverage as a percentage (Patrimonio / Activos * 100).
-    
-    Args:
-        df (pd.DataFrame): Input DataFrame with user data.
-    
-    Returns:
-        pd.DataFrame: DataFrame with added Leverage column.
-    """
-    df['Apalancamiento'] = (df['Patrimonio'] / df['Activos']) * 100
-    return df
-
-def calculate_debt_level(df):
-    """
-    Calculate Debt Level as a percentage (Pasivos / Activos * 100).
-    
-    Args:
-        df (pd.DataFrame): Input DataFrame with user data.
-    
-    Returns:
-        pd.DataFrame: DataFrame with added Debt Level column.
-    """
-    df['Endeudamiento'] = (df['Pasivos'] / df['Activos']) * 100
-    return df
-
-def process_asset_data(df_assets):
-    """
-    Process the asset data to calculate total bank balance, number of banks, total assets, total investments, and their variations.
-    
-    Args:
-        df_assets (pd.DataFrame): DataFrame with asset data.
-    
-    Returns:
-        pd.DataFrame: Processed DataFrame with additional columns.
-    """
-    # Group by Usuario and Año Declaración to calculate total bank balance, number of banks, total assets, total investments, and number of investments
-    df_assets_grouped = df_assets.groupby(['Usuario', 'Año Declaración']).agg(
-        BancoSaldo=('Banco - Saldo COP', 'sum'),
-        Cant_Bancos=('Banco - Saldo COP', 'count'),
-        Bienes=('Bienes - Valor Corregido', 'sum'),
-        Cant_Bienes=('Bienes - Valor Corregido', 'count'),
-        Inversiones=('Inversiones - Valor COP', 'sum'),
-        Cant_Inversiones=('Inversiones - Valor COP', 'count')
-    ).reset_index()
-
-    # Set Cant_Bancos to 0 if BancoSaldo is zero
-    df_assets_grouped.loc[df_assets_grouped['BancoSaldo'] == 0, 'Cant_Bancos'] = 0
-
-    # Set Cant_Inversiones to 0 if Inversiones is zero
-    df_assets_grouped.loc[df_assets_grouped['Inversiones'] == 0, 'Cant_Inversiones'] = 0
-
-    # Calculate variations for BancoSaldo
-    df_assets_grouped = calculate_variation(df_assets_grouped, 'BancoSaldo')
-
-    # Calculate variations for Bienes
-    df_assets_grouped = calculate_variation(df_assets_grouped, 'Bienes')
-
-    # Calculate variations for Inversiones
-    df_assets_grouped = calculate_variation(df_assets_grouped, 'Inversiones')
-
-    # Embed trend symbols into variation values
-    df_assets_grouped = embed_trend_symbols(df_assets_grouped, ['BancoSaldo', 'Bienes', 'Inversiones'])
-
-    return df_assets_grouped
-
-def process_income_data(df_income):
-    """
-    Process the income data to calculate total income, number of incomes, and their variations.
-    
-    Args:
-        df_income (pd.DataFrame): DataFrame with income data.
-    
-    Returns:
-        pd.DataFrame: Processed DataFrame with additional columns.
-    """
-    # Group by Usuario and Año Declaración to calculate total income and number of incomes
-    df_income_grouped = df_income.groupby(['Usuario', 'Año Declaración']).agg(
-        Ingresos=('Ingresos - Valor COP', 'sum'),
-        Cant_Ingresos=('Ingresos - Valor COP', 'count')
-    ).reset_index()
-
-    # Calculate variations for Ingresos
-    df_income_grouped = calculate_variation(df_income_grouped, 'Ingresos')
-
-    # Embed trend symbols into variation values
-    df_income_grouped = embed_trend_symbols(df_income_grouped, ['Ingresos'])
-
-    return df_income_grouped
-
-def save_results(df, excel_filename="tables/trends/trends.xlsx"):
-    """
-    Save the DataFrame as an Excel file.
-    
-    Args:
-        df (pd.DataFrame): DataFrame to save.
-        excel_filename (str): Name of the Excel file.
-    """
-    try:
-        # Save as Excel
-        df.to_excel(excel_filename, index=False)
-        print(f"Data saved to {excel_filename}")
-    except Exception as e:
-        print(f"Error saving file: {e}")
-
-def display_filters(filters):
-    """
-    Display the current filters.
-    
-    Args:
-        filters (list): List of filters.
-    """
-    if not filters:
-        print("No filters applied.")
-    else:
-        print("\n--- Current Filters ---")
-        for i, (column, operator, value1, value2) in enumerate(filters, 1):
-            if operator == 'between':
-                print(f"{i}. {column} {operator} {value1} and {value2}")
-            else:
-                print(f"{i}. {column} {operator} {value1}")
-        print("-----------------------")
-
-def apply_filters(df, filters):
-    """
-    Apply filters to the DataFrame.
-    
-    Args:
-        df (pd.DataFrame): DataFrame to filter.
-        filters (list): List of filters to apply.
-    
-    Returns:
-        pd.DataFrame: Filtered DataFrame.
-    """
-    filtered_data = df
-    for filter in filters:
-        column, operator, value1, value2 = filter
-        try:
-            if operator == 'between':
-                filtered_data = filtered_data[
-                    (filtered_data[column] >= value1) & (filtered_data[column] <= value2)
-                ]
-            else:
-                if operator == '>':
-                    filtered_data = filtered_data[filtered_data[column] > value1]
-                elif operator == '<':
-                    filtered_data = filtered_data[filtered_data[column] < value1]
-                elif operator == '=':
-                    filtered_data = filtered_data[filtered_data[column] == value1]
-                elif operator == '>=':
-                    filtered_data = filtered_data[filtered_data[column] >= value1]
-                elif operator == '<=':
-                    filtered_data = filtered_data[filtered_data[column] <= value1]
-        except Exception as e:
-            logging.error(f"Error applying filter on column '{column}': {e}")
-            continue
-    return filtered_data
-
-def save_to_excel(filtered_data):
-    """
-    Save filtered results to an Excel file.
-    
-    Args:
-        filtered_data (pd.DataFrame): Filtered DataFrame.
-    """
-    # Create the 'filters' directory if it doesn't exist
-    output_dir = 'filters'
-    if not os.path.exists(output_dir):
-        os.makedirs(output_dir)
-        
-    file_name = input("Enter the name of the Excel file to save (e.g., output.xlsx): ").strip()
-    if not file_name.endswith('.xlsx'):
-        file_name += '.xlsx'
-    try:
-        filtered_data.to_excel(file_name, index=False)
-        print(f"Filtered results saved to '{file_name}' successfully!")
-    except Exception as e:
-        logging.error(f"Error saving to Excel file: {e}")
-
-def terminal_filter_interface(df):
-    """
-    Terminal-based interface for filtering data.
-    
-    Args:
-        df (pd.DataFrame): DataFrame to filter.
-    """
-    filters = []
-    while True:
-        print("\n--- Main Menu ---")
-        print("1. Add a Filter")
-        print("2. View Current Filters")
-        print("3. Reset Filters")
-        print("4. Apply Filters and View Results")
-        print("5. Save Filtered Results to Excel")
-        print("6. Exit")
-        choice = input("Enter your choice (1-6): ").strip()
-
-        if choice == '1':  # Add a filter
-            print("\n--- Add a Filter ---")
-            print("Available columns:", df.columns.tolist())
-            column = input("Enter column name: ").strip()
-            if column not in df.columns:
-                print("Invalid column. Please try again.")
-                continue
-
-            print("Available operators: >, <, =, >=, <=, between")
-            operator = input("Enter operator: ").strip()
-            if operator not in ['>', '<', '=', '>=', '<=', 'between']:
-                print("Invalid operator. Please try again.")
-                continue
-
-            value1 = input("Enter value 1: ").strip()
-            try:
-                value1 = float(value1)
-            except ValueError:
-                print("Invalid value. Please enter a number.")
-                continue
-
-            value2 = None
-            if operator == 'between':
-                value2 = input("Enter value 2: ").strip()
-                try:
-                    value2 = float(value2)
-                except ValueError:
-                    print("Invalid value. Please enter a number.")
-                    continue
-
-            filters.append((column, operator, value1, value2))
-            print("Filter added successfully!")
-
-        elif choice == '2':  # View current filters
-            display_filters(filters)
-
-        elif choice == '3':  # Reset filters
-            filters = []
-            print("All filters have been reset.")
-
-        elif choice == '4':  # Apply filters and view results
-            if not filters:
-                print("No filters applied. Displaying all data.")
-            else:
-                print("\n--- Applying Filters ---")
-                display_filters(filters)
-            filtered_data = apply_filters(df, filters)
-            print("\n--- Filtered Results ---")
-            print(filtered_data)
-
-        elif choice == '5':  # Save filtered results to Excel
-            if not filters:
-                print("No filters applied. Saving all data.")
-            else:
-                print("\n--- Applying Filters ---")
-                display_filters(filters)
-                filtered_data = apply_filters(df, filters)
-            save_to_excel(filtered_data)
-
-        elif choice == '6':  # Exit
-            print("Exiting the filtering system.")
-            break
-
-        else:
-            print("Invalid choice. Please enter a number between 1 and 6.")
-
-def main():
-    try:
-        # Load the worth Excel file
-        df = pd.read_excel("tables/nets/worthNets.xlsx")
-        print("Worth file loaded successfully.")
-        
-        # Rename columns
-        df = df.rename(columns={
-            'Total Activos': 'Activos',
-            'Pasivos - Valor': 'Pasivos',
-            'Total Patrimonio': 'Patrimonio'
-        })
-        
-        # Calculate Leverage
-        df = calculate_leverage(df)
-        
-        # Calculate Debt Level
-        df = calculate_debt_level(df)
-        
-        # Add a new column for the quantity of debts next to "Pasivo"
-        df['Cant_Deudas'] = df['Pasivos'].apply(lambda x: 1 if x > 0 else 0)  # Count debts (1 if debt exists, 0 otherwise)
-        
-        # Columns to calculate variations for
-        columns_to_analyze = ['Activos', 'Pasivos', 'Patrimonio', 'Apalancamiento', 'Endeudamiento']
-        
-        # Calculate variations for each column
-        for column in columns_to_analyze:
-            df = calculate_variation(df, column)
-        
-        # Embed trend symbols into variation values
-        df = embed_trend_symbols(df, columns_to_analyze)
-        
-        # Load the asset data
-        df_assets = pd.read_excel("tables/nets/assetNets.xlsx")
-        print("Asset file loaded successfully.")
-        
-        # Process the asset data
-        df_assets_processed = process_asset_data(df_assets)
-        
-        # Load the income data
-        df_income = pd.read_excel("tables/nets/incomeNets.xlsx")
-        print("Income file loaded successfully.")
-        
-        # Process the income data
-        df_income_processed = process_income_data(df_income)
-        
-        # Merge the processed asset and income data with the worth DataFrame
-        df = pd.merge(df, df_assets_processed, on=['Usuario', 'Año Declaración'], how='left')
-        df = pd.merge(df, df_income_processed, on=['Usuario', 'Año Declaración'], how='left')
-        
-        # Save results
-        save_results(df)
-        
-        # Terminal-based filtering interface
-        print("\nWelcome to the byrAnalyzer Filtering System!")
-        terminal_filter_interface(df)
     except FileNotFoundError:
         print("Error: One of the required files was not found.")
     except Exception as e:
@@ -4010,8 +2663,6 @@ function createStructure {
     Write-Host "🏗️ Creating directory structure" -ForegroundColor $YELLOW
     $directories = @(
         "static",
-        "models/cats",
-        "models/nets",
         "models/trends",
         "tables/cats",
         "tables/nets",
@@ -4029,11 +2680,7 @@ function generateCaTables {
     # Python scripts to generate tables
     $scripts = @(
         "models/passKey.py",
-        "models/cats/banks.py",
-        "models/cats/debts.py",
-        "models/cats/goods.py",
-        "models/cats/incomes.py",
-        "models/cats/investments.py",
+        "models/cats.py",
         "models/toJson.py"
     )
 
@@ -4067,7 +2714,6 @@ function generatrendTables {
 
     # Python scripts to generate tables
     $scripts = @(
-        #"models/trends/filters.py",
         "models/trends/trends.py",
         "models/trends/overTrends.py"
         

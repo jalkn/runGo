@@ -49,24 +49,11 @@ byrAnalize/
 ├── models/
 │   ├── passKey.py
 │   ├── server.py
-│   ├── cats/
-│   │   ├── banks.py
-│   │   ├── debts.py
-│   │   ├── goods.py
-│   │   ├── incomes.py
-│   │   └── investments.py
-│   ├── nets/
-│   │   ├── assetNets.py
-│   │   ├── bankNets.py
-│   │   ├── debtNets.py
-│   │   ├── goodNets.py
-│   │   ├── incomeNets.py
-│   │   ├── investNets.py
-│   │   └── worthNets.py
+│   ├── cats.py
+│   ├── nets.py
 │   └── trends/
 │       ├── overTrends.py
-│       ├── trends.py
-│       └── filters.py
+│       └── trends.py
 ├── src/
 │   ├── dataHistoricaPBI.xlsx
 │   └── periodoPBI.xlsx
@@ -99,7 +86,7 @@ byrAnalize/
 ├── run.ps1
 └── set.ps1
 ```
-
+Create a single script that generates all seven files by consolidating the common columns and fucntions and creating separate functions fro each analysis type: 
 ## 4. Visualización de datos
 
 ### 4.1 Visualización en el navegador
