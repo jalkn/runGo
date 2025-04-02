@@ -4013,7 +4013,7 @@ function createStructure {
 
     # Upgrade pip and install required packages
     python -m pip install --upgrade pip
-    python -m pip install django python-dotenv pandas openpyxl plotly seaborn matplotlib msoffcrypto-tool json
+    python -m pip install pandas python-dotenv openpyxl plotly msoffcrypto-tool
 
     # Always create subdirectories
     Write-Host "🏗️ Creating directory structure" -ForegroundColor $YELLOW
