@@ -3981,17 +3981,8 @@ function exportToExcel() {
         return;
     }
     
-    // Create a copy of the data without trend icons
-    const exportData = filteredData.map(item => {
-        const newItem = {...item};
-        // Remove trend icons from variation columns
-        Object.keys(newItem).forEach(key => {
-            if (typeof newItem[key] === 'string') {
-                newItem[key] = newItem[key].replace(/[📈📉➡️]/g, '').trim();
-            }
-        });
-        return newItem;
-    });
+    // Use the original data with trend icons
+    const exportData = filteredData.map(item => ({...item}));
     
     // Create worksheet
     const worksheet = XLSX.utils.json_to_sheet(exportData);
