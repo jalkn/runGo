@@ -12,12 +12,12 @@ Ejecute el script principal `run.ps1`. Este script instala las dependencias, cre
 
 ## 2. Ejecución del análisis y Visualización de datos
 
-1. El script en la terminal
+1. Ejecuta el script en la terminal
 
 ```
 python app.py
 ```
-2. Cargue el archivo dataHistoricaPBI.xlsx dando click en "Subir archivo Excel", ingrese la contraseña y genera la tabla dando click "Analizar Archivo". El navegador mostrará los datos.  
+2. Cargue el archivo dataHistoricaPBI.xlsx dando click en "Cargar archivo Excel", ingrese la contraseña y genera la tabla dando click "Analizar Archivo". El navegador mostrará los datos.  
 
 3. Para filtrar los datos:
 

@@ -1282,7 +1282,7 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     <h1>Bienes y Rentas</h1>
     <div class="filter-form">
         <label for="excelUpload" class="file-upload-label">
-          <span class="file-upload-button">Subir archivo Excel</span>
+          <span class="file-upload-button">Cargar archivo Excel</span>
           <input type="file" 
                  id="excelUpload" 
                  accept=".xlsx,.xls" 
@@ -1817,7 +1817,7 @@ cursor: pointer;
 .file-upload-button {
 display: inline-block;
 padding: 8px 12px;
-background-color: #0b00a2;
+background-color:rgb(0, 176, 15);
 color: white;
 border-radius: 4px;
 transition: background-color 0.3s;
