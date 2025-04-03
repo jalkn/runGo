@@ -1,48 +1,36 @@
 # A R P A
 
-Este repositorio primer version contiene los scripts y filtros necesarios para analizar datos históricos en el archivo `src/dataHistoricaPBI.xlsx`. El periodo a evaluar se define en el archivo `src/periodoPBI.xlsx`.
+Este repositorio en su primera version contiene los scripts y filtros necesarios para analizar datos históricos en el archivo dataHistoricaPBI.xlsx.
 
 ## 1. Preparación
 
-**Creación de directorios:**
-
-Ejecute el script `set.ps1` para crear la estructura de directorios necesaria:
-
-```powershell
-.\set.ps1
-```
-
-**Ubicación de los datos:**
-
-Asegurese de pegar los archivos `dataHistoricaPBI.xlsx` y `periodoPBI.xlsx` en la carpeta `src/`.
-
-La estructura del repositorio debe ser la siguiente:
-
-```
-byrAnalize/
-├── models/
-├── tables/
-├── src/
-│   ├── dataHistoricaPBI.xlsx
-│   └── periodoPBI.xlsx
-├── favicon.png
-├── .gitignore
-├── README.md
-├── run.ps1
-└── set.ps1
-```
-
-## 2. Ejecución del análisis
-
-Ejecute el script principal `run.ps1`. Este script instala las dependencias, crea los scripts de análisis, ejecuta el análisis y genera los resultados en la carpeta `tables/`.
+Ejecute el script principal `run.ps1`. Este script instala las dependencias, crea los scripts de análisis, se abrira el navegador la previsualizacion del entorno de análisis.
 
 ```powershell
 .\run.ps1
 ```
 
+## 2. Ejecución del análisis y Visualización de datos
+
+1. El script en la terminal
+
+```
+python app.py
+```
+2. Cargue el archivo dataHistoricaPBI.xlsx dando click en "Subir archivo Excel", ingrese la contraseña y genera la tabla dando click "Analizar Archivo". El navegador mostrará los datos.  
+
+3. Para filtrar los datos:
+
+- Utilice los botones para agregar, visualizar, reiniciar y aplicar filtros.
+
+- Guarde los resultados filtrados en la carpeta de descragas/ con el botón "Guardar Excel".
+
+- Dando click en detalles puede visualizar todos los datos por fila y guardar en excel.
+
+
 ## 3. Resultados
 
-Después de ejecutar `run.ps1`, se abrira el navegador con la visualización de los datos. Tambien la carpeta `tables/` contendrá los resultados del análisis en archivos Excel, organizados en las subcarpetas `cats/`, `nets/` y `trends/`.  La estructura resultante será similar a la siguiente:
+Después "Analizar Archivo",  Tambien la carpeta `tables/` contendrá los resultados del análisis en archivos Excel, organizados en las subcarpetas `cats/`, `nets/` y `trends/`.  La estructura resultante será similar a la siguiente:
 
 ```
 arpa/
@@ -52,6 +40,7 @@ arpa/
 │   ├── server.py
 │   ├── cats.py
 │   ├── nets.py
+│   ├── period.py
 │   └── trends.py
 ├── src/
 │   ├── dataHistoricaPBI.xlsx
@@ -83,44 +72,6 @@ arpa/
 ├── index.html
 ├── .gitignore
 ├── README.md
-├── run.ps1
-└── set.ps1
-```
-Create a single script that generates all seven files by consolidating the common columns and fucntions and creating separate functions fro each analysis type: 
-## 4. Visualización de datos
-
-### 4.1 Visualización en el navegador
-
-1. Ejecute el script en la terminal:
-
-```
-python models/server.py
-```
-
-El navegador mostrará los datos.  Para filtrar los datos:
-
-2. Utilice los botones para agregar, visualizar, reiniciar y aplicar filtros.
-
-3. Guarde los resultados filtrados en la carpeta de descragas/ con el botón "Guardar Excel".
-
-### 4.2 Visualización en la terminal
-
-1. Ejecute el script en la terminal:
-
-```
-python models/trends/filters.py
-```
-
-2. El script permite filtrar los datos cargados desde `data.json` y guardar los resultados en un archivo Excel. Siga las instrucciones en la terminal para agregar, visualizar, reiniciar y aplicar filtros.
-
-3. Guarde los resultados filtrados en un archivo Excel.
-
-
-## 5. Flujo de trabajo con Git
-
-### Actualizar el repositorio
-
-```
-git clone https://github.com/jalkn/Byranalize.git
-git pull
+├── app.py
+└── run.ps1
 ```

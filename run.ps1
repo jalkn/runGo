@@ -4,7 +4,65 @@ $GREEN = "Green"
 $YELLOW = "Yellow"
 $NC = "White"
 
-function passKey {
+function createPeriod {
+    Write-Host "🏗️ Creating periodoBR" -ForegroundColor $YELLOW
+    # password
+    Set-Content -Path "models/period.py" -Value @"
+from openpyxl import Workbook
+from openpyxl.styles import Font
+
+def create_excel_file():
+    # Create a new workbook and select the active worksheet
+    wb = Workbook()
+    ws = wb.active
+    
+    # Define the header row
+    headers = [
+        "Id", "Activo", "Año", "FechaFinDeclaracion", 
+        "FechaInicioDeclaracion", "Año declaracion"
+    ]
+    
+    # Write the headers to the first row and make them bold
+    for col_num, header in enumerate(headers, 1):
+        cell = ws.cell(row=1, column=col_num, value=header)
+        cell.font = Font(bold=True)
+    
+    # Data rows
+    data = [
+        [2, True, "Friday, January 01, 2021", "4/30/2022", "6/1/2021", "2,021"],
+        [6, True, "Saturday, January 01, 2022", "3/31/2023", "10/19/2022", "2,022"],
+        [7, True, "Sunday, January 01, 2023", "5/12/2024", "11/1/2023", "2,023"],
+        [8, True, "Monday, January 01, 2024", "1/1/2025", "10/2/2024", "2,024"]
+    ]
+    
+    # Write data rows
+    for row_num, row_data in enumerate(data, 2):  # Start from row 2
+        for col_num, cell_value in enumerate(row_data, 1):
+            ws.cell(row=row_num, column=col_num, value=cell_value)
+    
+    # Auto-adjust column widths
+    for column in ws.columns:
+        max_length = 0
+        column_letter = column[0].column_letter
+        for cell in column:
+            try:
+                if len(str(cell.value)) > max_length:
+                    max_length = len(str(cell.value))
+            except:
+                pass
+        adjusted_width = (max_length + 2)
+        ws.column_dimensions[column_letter].width = adjusted_width
+    
+    # Save the workbook
+    filename = "src/periodoBR.xlsx"
+    wb.save(filename)
+    print(f"Excel file '{filename}' created successfully!")
+
+if __name__ == "__main__":
+    create_excel_file()
+"@
+}
+function createPassKey {
     Write-Host "🏗️ Creating passKey" -ForegroundColor $YELLOW
     # password
     Set-Content -Path "models/passKey.py" -Value @"
@@ -1079,23 +1137,20 @@ if __name__ == "__main__":
 "@
 }
 
-function createIndex {
-    Write-Host "🏗️ Creating Server" -ForegroundColor $YELLOW
-    # server
-    Set-Content -Path "models/server.py" -Value @"
+function createApp {
+    Write-Host "🏗️ Creating App" -ForegroundColor $YELLOW
+    # app.py
+    Set-Content -Path "app.py" -Value @"
 import http.server
 import socketserver
 import os
 import webbrowser
 import threading
 import json
-from io import BytesIO
-import pandas as pd
-from passKey import remove_excel_password, add_fk_id_estado
-from cats import run_all_analyses as run_cats_analyses
-from nets import run_all_analyses as run_nets_analyses
-from trends import main as run_trends_analysis
-from urllib.parse import parse_qs
+from models.passKey import remove_excel_password, add_fk_id_estado
+from models.cats import run_all_analyses as run_cats_analyses
+from models.nets import run_all_analyses as run_nets_analyses
+from models.trends import main as run_trends_analysis
 
 class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
     def do_POST(self):
@@ -1203,7 +1258,9 @@ def main():
 if __name__ == "__main__":
     main()
 "@
+}
 
+function createIndex {
 Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     # html
     Set-Content -Path "index.html" -Value @"
@@ -2747,7 +2804,7 @@ function exportToExcel() {
 }
 
 function createStructure {
-    Write-Host "🏗️ Creating Structure" -ForegroundColor $YELLOW
+    Write-Host "🏗️ Creating Framework" -ForegroundColor $YELLOW
 
     # Create Python virtual environment
     python -m venv .venv
@@ -2760,6 +2817,7 @@ function createStructure {
     # Always create subdirectories
     Write-Host "🏗️ Creating directory structure" -ForegroundColor $YELLOW
     $directories = @(
+        "src",
         "static",
         "models",
         "tables/cats",
@@ -2772,64 +2830,26 @@ function createStructure {
 
 }
 
-function generateTables {
-    Write-Host "🏗️ Generating Tables" -ForegroundColor $GREEN
-
-    # Python scripts to generate tables
-    $scripts = @(
-        "models/passKey.py",
-        "models/cats.py",
-        "models/nets.py",
-        "models/trends.py"
-    )
-
-    foreach ($script in $scripts) {
-        #Execute the script
-        python $script
-    }
-}
-
-function deleteData {
-    param (
-        [string]$rootDir = "."  # Define $rootDir as a parameter with a default value
-    )
-
-    # Define the path to the file
-    $filePath = Join-Path -Path $rootDir -ChildPath "src/data.xlsx"
-
-    # Check if the file exists
-    if (Test-Path -Path $filePath -PathType Leaf) {
-        try {
-            Remove-Item -Path $filePath -Force
-            Write-Host "Deleted file: $filePath"
-        }
-        catch {
-            Write-Host "Error deleting file $($filePath): $($_.Exception.Message)"
-        }
-    }
-    else {
-        Write-Host "File does not exist: $filePath"
-    }
-}
 function main {
-    Write-Host "🏗️ A R P A" -ForegroundColor $NC
+    Write-Host "🏗️ Setting A R P A" -ForegroundColor $GREEN
 
-    # Call functions to create structure and generate tables
+    # Call functions to create structure and models
     createStructure
-    passKey
+    createPeriod
+    createPassKey
     createCats
     createNets
     createTrends
+    createApp
+    createIndex
 
-    # Generate tables
-    generateTables
-    deleteData
+    #generate periodoBR
+    python models/period.py
 
-    Write-Host "🏗️ The tables are generated" -ForegroundColor $YELLOW
+    Write-Host "🏗️ The framework is set" -ForegroundColor $YELLOW
     Write-Host "🏗️ Opening index.html in browser..." -ForegroundColor $GREEN
     
-    createIndex
-    python models/server.py
+    python app.py
 
 }
 
