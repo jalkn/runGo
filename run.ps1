@@ -710,7 +710,7 @@ def analyze_goods(file_path, output_file_path):
 
     # Rename columns for clarity
     summary = summary.rename(columns={
-        'Bienes - Activo': 'Cantidad de Bienes',
+        'Bienes - Activo': 'Cant_Bienes',
         'Bienes - Valor Corregido': 'Total Bienes'
     })
 
@@ -739,7 +739,7 @@ def analyze_incomes(file_path, output_file_path):
 
     # Rename columns for clarity
     summary = summary.rename(columns={
-        'Ingresos - Texto Concepto': 'Cantidad de Ingresos',
+        'Ingresos - Texto Concepto': 'Cant_Ingresos',
         'Ingresos - Valor COP': 'Total Ingresos'
     })
 
@@ -764,7 +764,7 @@ def analyze_investments(file_path, output_file_path):
         {'Inversiones - Valor COP': 'sum',
          'Inversiones - Tipo Inversión': 'count'}
     ).rename(columns={
-        'Inversiones - Tipo Inversión': 'Cantidad de Inversiones',
+        'Inversiones - Tipo Inversión': 'Cant_Inversiones',
         'Inversiones - Valor COP': 'Total Inversiones'
     }).reset_index()
     
@@ -780,7 +780,7 @@ def calculate_assets(banks_file, goods_file, invests_file, output_file):
     # Group investments by base columns (summing across types)
     invests_grouped = invests.groupby(BASE_GROUPBY).agg({
         'Total Inversiones': 'sum',
-        'Cantidad de Inversiones': 'sum'
+        'Cant_Inversiones': 'sum'
     }).reset_index()
 
     # Merge all three dataframes
@@ -797,9 +797,9 @@ def calculate_assets(banks_file, goods_file, invests_file, output_file):
 
     # Reorder and rename columns
     final_columns = BASE_GROUPBY + [
-        'Total Bienes', 'Cantidad de Bienes',
+        'Total Bienes', 'Cant_Bienes',
         'Banco - Saldo COP', 'Cant_Bancos', 'Cant_Cuentas',
-        'Total Inversiones', 'Cantidad de Inversiones',
+        'Total Inversiones', 'Cant_Inversiones',
         'Total Activos'
     ]
     merged = merged[final_columns]
@@ -827,10 +827,10 @@ def calculate_net_worth(debts_file, assets_file, output_file):
     # Final column order
     final_columns = BASE_GROUPBY + [
         'Total Activos',
-        'Cantidad de Bienes',
+        'Cant_Bienes',
         'Cant_Bancos',
         'Cant_Cuentas',
-        'Cantidad de Inversiones',
+        'Cant_Inversiones',
         'Total Pasivos',
         'Cant_Deudas',
         'Total Patrimonio'
@@ -999,7 +999,7 @@ def process_income_data(df_income):
     # Group by Usuario and Año Declaración to calculate total income and number of incomes
     df_income_grouped = df_income.groupby(['Usuario', 'Año Declaración']).agg(
         Ingresos=('Total Ingresos', 'sum'),
-        Cant_Ingresos=('Cantidad de Ingresos', 'sum')
+        Cant_Ingresos=('Cant_Ingresos', 'sum')
     ).reset_index()
 
     # Calculate variations for Ingresos
