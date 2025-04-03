@@ -48,14 +48,15 @@ Después de ejecutar `run.ps1`, se abrira el navegador con la visualización de 
 arpa/
 ├── models/
 │   ├── passKey.py
+│   ├── fk1Data.py
 │   ├── server.py
 │   ├── cats.py
 │   ├── nets.py
-│   └── trends/
-│       ├── overTrends.py
-│       └── trends.py
+│   └── trends.py
 ├── src/
 │   ├── dataHistoricaPBI.xlsx
+│   ├── data.json
+│   ├── fk1Data.json
 │   └── periodoPBI.xlsx
 ├── tables/
 │   ├── cats/
@@ -74,8 +75,7 @@ arpa/
 │   │   └── worthNets.xlsx
 │   └── trends/
 │       ├── overTrends.xlsx
-│       ├── trends.xlsx
-│       └── data.json
+│       └── trends.xlsx
 ├── static/
 │   ├── style.css
 │   └── script.js

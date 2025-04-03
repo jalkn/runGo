@@ -12,6 +12,7 @@ import msoffcrypto
 import openpyxl
 import sys
 import os
+import json
 
 def remove_excel_password(input_file, output_file=None):
     if output_file is None:
@@ -68,12 +69,22 @@ def add_fk_id_estado(input_file, output_file):
         for row in range(2, ws.max_row + 1):
             ws.cell(row=row, column=fk_id_col, value=1)
 
-        # Save the modified workbook
-        wb.save(output_file)
-        print(f"File with 'fkIdEstado' column added saved to '{output_file}'.")
+        # Convert to JSON
+        data = []
+        header = [ws.cell(row=1, column=i).value for i in range(1, ws.max_column + 1)]
+        for row_num in range(2, ws.max_row + 1):
+            row_data = {}
+            for col_num in range(1, ws.max_column + 1):
+                row_data[header[col_num - 1]] = ws.cell(row=row_num, column=col_num).value
+            data.append(row_data)
+
+        with open(output_file, 'w', encoding='utf-8') as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+
+        print(f"File with 'fkIdEstado' column added and saved as JSON to '{output_file}'.")
         return True
     except Exception as e:
-        print(f"Error while adding 'fkIdEstado' column: {e}")
+        print(f"Error while adding 'fkIdEstado' column and converting to JSON: {e}")
         return False
 
 if __name__ == "__main__":
@@ -92,54 +103,20 @@ if __name__ == "__main__":
     # First output file (decrypted)
     output_excel_file = "src/data.xlsx"
 
-    # Second output file with fkIdEstado column
-    output_with_fk_file = "src/fk1Data.xlsx"
+    # Second output file with fkIdEstado column (JSON format)
+    output_json_file = "src/fk1data.json"  # Changed extension to .json
 
     if remove_excel_password(input_excel_file, output_excel_file):
-        # If decryption succeeded, create the modified file
-        if add_fk_id_estado(output_excel_file, output_with_fk_file):
-            print("Both files created successfully:")
+        # If decryption succeeded, create the modified JSON file
+        if add_fk_id_estado(output_excel_file, output_json_file):
+            print("Both processes completed successfully:")
             print(f"- Decrypted file: {output_excel_file}")
-            print(f"- File with fkIdEstado column: {output_with_fk_file}")
+            print(f"- File with fkIdEstado column (JSON): {output_json_file}")
         else:
-            print("Process partially completed - decrypted file created but failed to add fkIdEstado column.")
+            print("Process partially completed - decrypted file created but failed to add fkIdEstado column and convert to JSON.")
     else:
         print("Process failed - could not decrypt the input file.")
 "@
-
-Write-Host "🏗️ Creating FKID01 Filter" -ForegroundColor $YELLOW
-    # toJson
-    Set-Content -Path "models/toJson.py" -Value @"
-import pandas as pd
-
-def excel_to_json(excel_file, json_file):
-
-    try:
-        # Read the Excel file into a Pandas DataFrame
-        df = pd.read_excel(excel_file)
-
-        # Convert the DataFrame to a JSON string
-        json_data = df.to_json(orient='records', indent=4)  
-
-        # Write the JSON string to a file
-        with open(json_file, 'w') as f:
-            f.write(json_data)
-
-        print(f"Successfully converted '{excel_file}' to '{json_file}'")
-
-    except FileNotFoundError:
-        print(f"Error: Excel file '{excel_file}' not found.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-# Example usage:
-if __name__ == "__main__":
-    excel_file_path = "src/fk1Data.xlsx"  
-    json_file_path = "tables/trends/data2.json"  
-
-    excel_to_json(excel_file_path, json_file_path)
-"@
-
 }
 
 function createCats {
@@ -904,182 +881,7 @@ function createTrends {
 
 # trends
    
-Set-Content -Path "models/trends/trends.py" -Value @"
-import pandas as pd
-
-def get_trend_symbol(value):
-    
-    try:
-        value_float = float(value.strip('%')) / 100
-        if pd.isna(value_float):
-            return "➡️"  # neutral for first entry
-        elif value_float > 0.1:  # more than 10% increase
-            return "📈"
-        elif value_float < -0.1:  # more than 10% decrease
-            return "📉"
-        else:
-            return "➡️"  # relatively stable
-    except Exception as e:
-        return "➡️"  # handle any conversion errors
-
-def calculate_variation(df, column):
-
-    # Sort by Usuario and Año Declaración
-    df = df.sort_values(by=['Usuario', 'Año Declaración'])
-    
-    # Calculate absolute and relative variations
-    absolute_col = f'{column} Var. Abs.'
-    relative_col = f'{column} Var. Rel.'
-    
-    df[absolute_col] = df.groupby('Usuario')[column].diff()
-    
-    # Fill missing values with forward fill and calculate percentage change
-    df[relative_col] = (
-        df.groupby('Usuario')[column]
-        .ffill()  # Forward fill missing values
-        .pct_change(fill_method=None) * 100  # Explicitly set fill_method=None
-    )
-    
-    # Format relative variation as a percentage string
-    df[relative_col] = df[relative_col].apply(lambda x: f"{x:.2f}%" if not pd.isna(x) else "0.00%")
-    
-    return df
-
-def embed_trend_symbols(df, columns):
-
-    for col in columns:
-        absolute_col = f'{col} Var. Abs.'
-        relative_col = f'{col} Var. Rel.'
-        
-        # Add trend symbols to the variation values
-        df[absolute_col] = df.apply(
-            lambda row: f"{row[absolute_col]} {get_trend_symbol(row[relative_col])}", axis=1
-        )
-        df[relative_col] = df.apply(
-            lambda row: f"{row[relative_col]} {get_trend_symbol(row[relative_col])}", axis=1
-        )
-    
-    return df
-
-def calculate_leverage(df):
-
-    df['Apalancamiento'] = (df['Patrimonio'] / df['Activos']) * 100
-    return df
-
-def calculate_debt_level(df):
-
-    df['Endeudamiento'] = (df['Pasivos'] / df['Activos']) * 100
-    return df
-
-def process_asset_data(df_assets):
-
-    # Group by Usuario and Año Declaración to calculate total bank balance, number of banks, total assets, total investments, and number of investments
-    df_assets_grouped = df_assets.groupby(['Usuario', 'Año Declaración']).agg(
-        BancoSaldo=('Banco - Saldo COP', 'sum'),
-        Bienes=('Total Bienes', 'sum'),
-        Inversiones=('Total Inversiones', 'sum')
-    ).reset_index()
-
-    # Calculate variations for BancoSaldo
-    df_assets_grouped = calculate_variation(df_assets_grouped, 'BancoSaldo')
-
-    # Calculate variations for Bienes
-    df_assets_grouped = calculate_variation(df_assets_grouped, 'Bienes')
-
-    # Calculate variations for Inversiones
-    df_assets_grouped = calculate_variation(df_assets_grouped, 'Inversiones')
-
-    # Embed trend symbols into variation values
-    df_assets_grouped = embed_trend_symbols(df_assets_grouped, ['BancoSaldo', 'Bienes', 'Inversiones'])
-
-    return df_assets_grouped
-
-def process_income_data(df_income):
-
-    # Group by Usuario and Año Declaración to calculate total income and number of incomes
-    df_income_grouped = df_income.groupby(['Usuario', 'Año Declaración']).agg(
-        Ingresos=('Total Ingresos', 'sum'),
-        Cant_Ingresos=('Cant_Ingresos', 'sum')
-    ).reset_index()
-
-    # Calculate variations for Ingresos
-    df_income_grouped = calculate_variation(df_income_grouped, 'Ingresos')
-
-    # Embed trend symbols into variation values
-    df_income_grouped = embed_trend_symbols(df_income_grouped, ['Ingresos'])
-
-    return df_income_grouped
-
-def save_results(df, excel_filename="tables/trends/trends.xlsx"):
-
-    try:
-        # Save as Excel
-        df.to_excel(excel_filename, index=False)
-        print(f"Data saved to {excel_filename}")
-    except Exception as e:
-        print(f"Error saving file: {e}")
-
-def main():
-    try:
-        # Load the worth Excel file
-        df = pd.read_excel("tables/nets/worthNets.xlsx")
-        print("Worth file loaded successfully.")
-        
-        # Rename columns
-        df = df.rename(columns={
-            'Total Activos': 'Activos',
-            'Total Pasivos': 'Pasivos',
-            'Total Patrimonio': 'Patrimonio'
-        })
-        
-        # Calculate Leverage
-        df = calculate_leverage(df)
-        
-        # Calculate Debt Level
-        df = calculate_debt_level(df)
-        
-        # Columns to calculate variations for
-        columns_to_analyze = ['Activos', 'Pasivos', 'Patrimonio', 'Apalancamiento', 'Endeudamiento']
-        
-        # Calculate variations for each column
-        for column in columns_to_analyze:
-            df = calculate_variation(df, column)
-        
-        # Embed trend symbols into variation values
-        df = embed_trend_symbols(df, columns_to_analyze)
-        
-        # Load the asset data
-        df_assets = pd.read_excel("tables/nets/assetNets.xlsx")
-        print("Asset file loaded successfully.")
-        
-        # Process the asset data
-        df_assets_processed = process_asset_data(df_assets)
-        
-        # Load the income data
-        df_income = pd.read_excel("tables/nets/incomeNets.xlsx")
-        print("Income file loaded successfully.")
-        
-        # Process the income data
-        df_income_processed = process_income_data(df_income)
-        
-        # Merge the processed asset and income data with the worth DataFrame
-        df = pd.merge(df, df_assets_processed, on=['Usuario', 'Año Declaración'], how='left')
-        df = pd.merge(df, df_income_processed, on=['Usuario', 'Año Declaración'], how='left')
-        
-        # Save results
-        save_results(df)
-    except FileNotFoundError:
-        print("Error: One of the required files was not found.")
-    except Exception as e:
-        print(f"An error occurred: {e}")
-
-if __name__ == "__main__":
-    main()
-"@
-
-# overTrends
-   
-Set-Content -Path "models/trends/overTrends.py" -Value @"
+Set-Content -Path "models/trends.py" -Value @"
 import pandas as pd
 
 def get_trend_symbol(value):
@@ -1088,57 +890,119 @@ def get_trend_symbol(value):
         value_float = float(value.strip('%')) / 100
         if pd.isna(value_float):
             return "➡️"
-        elif value_float > 0.1:
+        elif value_float > 0.1:  # more than 10% increase
             return "📈"
-        elif value_float < -0.1:
+        elif value_float < -0.1:  # more than 10% decrease
             return "📉"
         else:
-            return "➡️"
+            return "➡️"  # relatively stable
     except Exception:
         return "➡️"
 
+def calculate_variation(df, column):
+    """Calculate absolute and relative variations for a specific column."""
+    df = df.sort_values(by=['Usuario', 'Año Declaración'])
+    
+    absolute_col = f'{column} Var. Abs.'
+    relative_col = f'{column} Var. Rel.'
+    
+    df[absolute_col] = df.groupby('Usuario')[column].diff()
+    
+    df[relative_col] = (
+        df.groupby('Usuario')[column]
+        .ffill()
+        .pct_change(fill_method=None) * 100
+    )
+    
+    df[relative_col] = df[relative_col].apply(lambda x: f"{x:.2f}%" if not pd.isna(x) else "0.00%")
+    
+    return df
+
+def embed_trend_symbols(df, columns):
+    """Add trend symbols to variation columns."""
+    for col in columns:
+        absolute_col = f'{col} Var. Abs.'
+        relative_col = f'{col} Var. Rel.'
+        
+        if absolute_col in df.columns:
+            df[absolute_col] = df.apply(
+                lambda row: f"{row[absolute_col]:.2f} {get_trend_symbol(row[relative_col])}" 
+                if pd.notna(row[absolute_col]) else "N/A ➡️",
+                axis=1
+            )
+        
+        if relative_col in df.columns:
+            df[relative_col] = df.apply(
+                lambda row: f"{row[relative_col]} {get_trend_symbol(row[relative_col])}", 
+                axis=1
+            )
+    
+    return df
+
+def calculate_leverage(df):
+    """Calculate financial leverage."""
+    df['Apalancamiento'] = (df['Patrimonio'] / df['Activos']) * 100
+    return df
+
+def calculate_debt_level(df):
+    """Calculate debt level."""
+    df['Endeudamiento'] = (df['Pasivos'] / df['Activos']) * 100
+    return df
+
+def process_asset_data(df_assets):
+    """Process asset data with variations and trends."""
+    df_assets_grouped = df_assets.groupby(['Usuario', 'Año Declaración']).agg(
+        BancoSaldo=('Banco - Saldo COP', 'sum'),
+        Bienes=('Total Bienes', 'sum'),
+        Inversiones=('Total Inversiones', 'sum')
+    ).reset_index()
+
+    for column in ['BancoSaldo', 'Bienes', 'Inversiones']:
+        df_assets_grouped = calculate_variation(df_assets_grouped, column)
+    
+    df_assets_grouped = embed_trend_symbols(df_assets_grouped, ['BancoSaldo', 'Bienes', 'Inversiones'])
+    return df_assets_grouped
+
+def process_income_data(df_income):
+    """Process income data with variations and trends."""
+    df_income_grouped = df_income.groupby(['Usuario', 'Año Declaración']).agg(
+        Ingresos=('Total Ingresos', 'sum'),
+        Cant_Ingresos=('Cant_Ingresos', 'sum')
+    ).reset_index()
+
+    df_income_grouped = calculate_variation(df_income_grouped, 'Ingresos')
+    df_income_grouped = embed_trend_symbols(df_income_grouped, ['Ingresos'])
+    return df_income_grouped
+
 def calculate_yearly_variations(df):
-    """Calculate absolute and relative variations for all specified columns."""
+    """Calculate yearly variations for all columns."""
     df = df.sort_values(['Usuario', 'Año Declaración'])
     
     columns_to_analyze = [
         'Activos', 'Pasivos', 'Patrimonio', 
         'Apalancamiento', 'Endeudamiento',
         'BancoSaldo', 'Bienes', 'Inversiones', 'Ingresos',
-        'Cant_Deudas', 'Cant_Bancos', 'Cant_Cuentas', 'Cant_Bienes', 
-        'Cant_Inversiones', 'Cant_Ingresos'
+        'Cant_Ingresos'
     ]
     
-    # Precompute all variations first (avoids fragmentation)
     new_columns = {}
     
-    for column in columns_to_analyze:
-        if column not in df.columns:
-            print(f"Warning: Column '{column}' not found. Skipping.")
-            continue
-        
+    for column in [col for col in columns_to_analyze if col in df.columns]:
         grouped = df.groupby('Usuario')[column]
         
         for year in [2021, 2022, 2023, 2024]:
-            # Absolute variation
             abs_col = f'{year} {column} Var. Abs.'
             new_columns[abs_col] = grouped.diff()
             
-            # Relative variation
             rel_col = f'{year} {column} Var. Rel.'
             pct_change = grouped.pct_change(fill_method=None) * 100
             new_columns[rel_col] = pct_change.apply(
                 lambda x: f"{x:.2f}%" if not pd.isna(x) else "0.00%"
             )
     
-    # Add all new columns at once
     df = pd.concat([df, pd.DataFrame(new_columns)], axis=1)
     
-    # Add trend symbols
-    for column in columns_to_analyze:
-        if column not in df.columns:
-            continue
-            
+    for column in [col for col in columns_to_analyze if col in df.columns]:
         for year in [2021, 2022, 2023, 2024]:
             abs_col = f'{year} {column} Var. Abs.'
             rel_col = f'{year} {column} Var. Rel.'
@@ -1157,39 +1021,60 @@ def calculate_yearly_variations(df):
     
     return df
 
-def save_results(df, excel_path, json_path):
-    """Save DataFrame to both Excel and JSON formats."""
+def save_results(df, excel_filename="tables/trends/trends.xlsx", json_filename=None):
+    """Save results to Excel and optionally JSON."""
     try:
-        # Save to Excel
-        df.to_excel(excel_path, index=False)
-        print(f"Excel file saved to: {excel_path}")
+        df.to_excel(excel_filename, index=False)
+        print(f"Data saved to {excel_filename}")
         
-        # Save to JSON (ensure proper encoding for symbols)
-        df.to_json(json_path, orient='records', indent=4, force_ascii=False)
-        print(f"JSON file saved to: {json_path}")
+        if json_filename:
+            df.to_json(json_filename, orient='records', indent=4, force_ascii=False)
+            print(f"Data saved to {json_filename}")
     except Exception as e:
-        print(f"Error saving files: {e}")
+        print(f"Error saving file: {e}")
 
 def main():
+    """Main function to process all data and generate analysis files."""
     try:
-        # Load data
-        df = pd.read_excel("tables/trends/trends.xlsx")
-        print("Trends file loaded successfully.")
+        # Process worth data
+        df_worth = pd.read_excel("tables/nets/worthNets.xlsx")
+        df_worth = df_worth.rename(columns={
+            'Total Activos': 'Activos',
+            'Total Pasivos': 'Pasivos',
+            'Total Patrimonio': 'Patrimonio'
+        })
         
-        # Calculate variations
-        df = calculate_yearly_variations(df)
+        df_worth = calculate_leverage(df_worth)
+        df_worth = calculate_debt_level(df_worth)
         
-        # Save results
-        save_results(
-            df,
-            excel_path="tables/trends/overTrends.xlsx",
-            json_path="tables/trends/data.json"
-        )
-    
-    except FileNotFoundError:
-        print("Error: Input file 'trends.xlsx' not found.")
+        for column in ['Activos', 'Pasivos', 'Patrimonio', 'Apalancamiento', 'Endeudamiento']:
+            df_worth = calculate_variation(df_worth, column)
+        
+        df_worth = embed_trend_symbols(df_worth, ['Activos', 'Pasivos', 'Patrimonio', 'Apalancamiento', 'Endeudamiento'])
+        
+        # Process asset data
+        df_assets = pd.read_excel("tables/nets/assetNets.xlsx")
+        df_assets_processed = process_asset_data(df_assets)
+        
+        # Process income data
+        df_income = pd.read_excel("tables/nets/incomeNets.xlsx")
+        df_income_processed = process_income_data(df_income)
+        
+        # Merge all data
+        df_combined = pd.merge(df_worth, df_assets_processed, on=['Usuario', 'Año Declaración'], how='left')
+        df_combined = pd.merge(df_combined, df_income_processed, on=['Usuario', 'Año Declaración'], how='left')
+        
+        # Save basic trends
+        save_results(df_combined, "tables/trends/trends.xlsx")
+        
+        # Calculate and save yearly variations
+        df_yearly = calculate_yearly_variations(df_combined)
+        save_results(df_yearly, "tables/trends/overTrends.xlsx", "src/data.json")
+        
+    except FileNotFoundError as e:
+        print(f"Error: Required file not found - {e}")
     except Exception as e:
-        print(f"An unexpected error occurred: {e}")
+        print(f"An error occurred: {e}")
 
 if __name__ == "__main__":
     main()
@@ -1267,8 +1152,8 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     <h1>Bienes y Rentas</h1>
     <div class="filter-form">
         <select id="dataSource">
-            <option value="tables/trends/data.json">Datos Completos</option>
-            <option value="tables/trends/data2.json">Datos fkID01</option>
+            <option value="src/data.json">Datos Completos</option>
+            <option value="src/fk1Data.json">Datos FK1</option>
         </select>
         <button onclick="changeDataSource()">Cambiar Datos</button>
     </div>
@@ -1770,7 +1655,7 @@ let currentSortColumn = '';
 let sortDirection = 'asc';
 let processingData = false;
 const filters = [];
-let currentDataSource = 'tables/trends/data.json';
+let currentDataSource = 'src/data.json';
 
 // DOM elements
 const operatorSelect = document.getElementById('operator');
@@ -1960,7 +1845,7 @@ function quickFilter(columnName) {
     
     // Add sort indicator to current column
     const columnMap = {
-        'Usuario': 2,
+        'Usuario': 4,
         'Nombre': 0,
         'Compañía': 2,
         'Cargo': 3,
@@ -2678,23 +2563,8 @@ function generateTables {
         "models/passKey.py",
         "models/cats.py",
         "models/nets.py",
-        "models/toJson.py"
-    )
-
-    foreach ($script in $scripts) {
-        #Execute the script
-        python $script
-    }
-}
-
-function generaTrends {
-    Write-Host "🏗️ Generating Trends" -ForegroundColor $GREEN
-
-    # Python scripts to generate tables
-    $scripts = @(
-        "models/trends/trends.py",
-        "models/trends/overTrends.py"
-        
+        "models/trends.py",
+        "models/trends.py"
     )
 
     foreach ($script in $scripts) {
@@ -2737,7 +2607,6 @@ function main {
 
     # Generate tables
     generateTables
-    generaTrends
     deleteData
 
     Write-Host "🏗️ The tables are generated" -ForegroundColor $YELLOW
