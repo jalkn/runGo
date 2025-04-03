@@ -4,7 +4,7 @@ Este repositorio en su primera version contiene los scripts y filtros necesarios
 
 ## 1. Preparación
 
-Ejecute el script principal `run.ps1`. Este script instala las dependencias, crea los scripts de análisis, se abrira el navegador la previsualizacion del entorno de análisis.
+Ejecute el script principal `run.ps1`. Este script instala las dependencias, crea los scripts de análisis, se abrira en el navegador el entorno de análisis.
 
 ```powershell
 .\run.ps1

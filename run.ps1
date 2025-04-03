@@ -62,6 +62,7 @@ if __name__ == "__main__":
     create_excel_file()
 "@
 }
+
 function createPassKey {
     Write-Host "🏗️ Creating passKey" -ForegroundColor $YELLOW
     # password
@@ -72,7 +73,7 @@ import sys
 import os
 import json
 
-def remove_excel_password(input_file, output_file=None, password=None):
+def remove_excel_password(input_file, output_file=None, open_password=None, modify_password=None):
     if output_file is None:
         output_file = input_file
 
@@ -81,8 +82,17 @@ def remove_excel_password(input_file, output_file=None, password=None):
         decrypted_file = output_file
         with open(input_file, "rb") as file:
             office_file = msoffcrypto.OfficeFile(file)
-            if password:
-                office_file.load_key(password=password)
+            
+            # Try with open password first
+            if open_password:
+                try:
+                    office_file.load_key(password=open_password)
+                except:
+                    # If open password fails, try modify password
+                    if modify_password:
+                        office_file.load_key(password=modify_password)
+                    else:
+                        raise Exception("Open password failed and no modify password provided")
             else:
                 # Try without password if file isn't encrypted
                 try:
@@ -91,6 +101,7 @@ def remove_excel_password(input_file, output_file=None, password=None):
                     # File is encrypted but no password provided
                     print("Archivo parece estar protegido pero no se proporcionó contraseña")
                     return False
+            
             with open(decrypted_file, "wb") as decrypted:
                 office_file.decrypt(decrypted)
 
@@ -1153,6 +1164,16 @@ from models.nets import run_all_analyses as run_nets_analyses
 from models.trends import main as run_trends_analysis
 
 class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
+    def end_headers(self):
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Access-Control-Allow-Methods', 'POST, GET, OPTIONS')
+        self.send_header('Access-Control-Allow-Headers', 'Content-Type')
+        super().end_headers()
+    
+    def do_OPTIONS(self):
+        self.send_response(200)
+        self.end_headers()
+    
     def do_POST(self):
         if self.path == '/upload':
             try:
@@ -1175,16 +1196,21 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 parts = post_data.split(b'--' + boundary)
                 
                 file_data = None
-                password = ''
+                open_password = ''
+                modify_password = ''
                 for part in parts:
                     if b'filename="' in part:
                         # This part contains the file
                         header, content = part.split(b'\r\n\r\n', 1)
                         file_data = content.rstrip(b'\r\n')
-                    elif b'name="password"' in part:
-                        # This part contains the password
+                    elif b'name="openPassword"' in part:
+                        # This part contains the open password
                         header, content = part.split(b'\r\n\r\n', 1)
-                        password = content.rstrip(b'\r\n').decode('utf-8')
+                        open_password = content.rstrip(b'\r\n').decode('utf-8')
+                    elif b'name="modifyPassword"' in part:
+                        # This part contains the modify password
+                        header, content = part.split(b'\r\n\r\n', 1)
+                        modify_password = content.rstrip(b'\r\n').decode('utf-8')
                 
                 if not file_data:
                     self.send_response(400)
@@ -1202,7 +1228,7 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 output_json = 'src/fk1data.json'
                 
                 # Remove password if needed
-                remove_excel_password(input_path, output_excel, password)
+                remove_excel_password(input_path, output_excel, open_password, modify_password)
                 
                 # Add fkIdEstado and convert to JSON
                 add_fk_id_estado(output_excel, output_json)
@@ -1212,16 +1238,34 @@ class CustomHTTPRequestHandler(http.server.SimpleHTTPRequestHandler):
                 run_nets_analyses()
                 run_trends_analysis()
                 
+                # Read the processed data to include in response
+                with open(output_json, 'r', encoding='utf-8') as f:
+                    data = json.load(f)
+                
+                response_data = {
+                    'success': True,
+                    'message': 'File processed successfully',
+                    'file': output_json,
+                    'stats': {
+                        'rows_processed': len(data),
+                        'columns': len(data[0].keys()) if data else 0
+                    }
+                }
+                
                 self.send_response(200)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'success': True}).encode())
+                self.wfile.write(json.dumps(response_data).encode())
                 
             except Exception as e:
                 self.send_response(500)
                 self.send_header('Content-type', 'application/json')
                 self.end_headers()
-                self.wfile.write(json.dumps({'success': False, 'message': str(e)}).encode())
+                self.wfile.write(json.dumps({
+                    'success': False,
+                    'message': str(e),
+                    'error_type': type(e).__name__
+                }).encode())
 
 def start_server(port=8000):
     """Starts a simple HTTP server in a background thread."""
@@ -1291,16 +1335,16 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
         </label>
         <span id="fileUploadStatus" aria-live="polite" class="file-upload-status"></span>
         
-        <!-- Add password input -->
-          <input type="password"
-                 id="excelPassword" 
-                 placeholder="Contraseña del archivo (si tiene)">
+        <!-- Password container -->
+        <div id="passwordContainer" style="display: none;">
+            <input type="password"
+                   id="excelOpenPassword" 
+                   placeholder="(si tiene contraseña)">
+            <input type="password"
+                   id="excelModifyPassword" 
+                   placeholder="(si tiene contraseña de modificación)">
+        </div>
         <button id="analyzeButton">Analizar Archivo</button>
-        <select id="dataSource" aria-label="Seleccionar fuente de datos" title="Fuente de datos">
-          <option value="src/data.json">Tendencias</option>
-          <option value="src/fk1Data.json">Datos FK1</option>
-        </select>
-        <button onclick="changeDataSource()">Cambiar Datos</button>
     </div>
 
     <div class="filter-form">
@@ -1368,6 +1412,12 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
         
         <button onclick="addFilter()">Agregar Filtro</button>
         <button onclick="exportToExcel()">Exportar Excel</button>
+        
+        <select id="dataSource" aria-label="Seleccionar fuente de datos" title="Fuente de datos">
+            <option value="src/data.json">Tendencias</option>
+            <option value="src/fk1Data.json">Datos FK1</option>
+        </select>
+        <button onclick="changeDataSource()">Cambiar Tabla</button>
 
         <div class="filter-buttons">
             <button onclick="applyPredeterminedFilter('Patrimonio', '>', '3000000000')">Patrimonio > ,000M</button>
@@ -1906,50 +1956,69 @@ async function loadData() {
 // Add analyze button functionality
     document.getElementById('analyzeButton').addEventListener('click', async function() {
         if (!selectedFile) {
-        alert('Por favor seleccione un archivo primero');
-        return;
+            alert('Por favor seleccione un archivo primero');
+            return;
         }
-    
-        const password = document.getElementById('excelPassword').value;
+        
+        const openPassword = document.getElementById('excelOpenPassword').value;
+        const modifyPassword = document.getElementById('excelModifyPassword').value;
         const statusElement = document.getElementById('fileUploadStatus');
         
         try {
-        statusElement.textContent = 'Procesando archivo...';
-        statusElement.style.color = '#0b00a2';
-        
-        // Process the file
-        await processExcelFile(selectedFile, password);
-        
-        statusElement.textContent = 'Análisis completado correctamente!';
-        statusElement.style.color = 'green';
-        
-        // Reload the data
-        await loadData();
-        
+            statusElement.textContent = 'Procesando archivo...';
+            statusElement.style.color = '#0b00a2';
+            
+            const result = await processExcelFile(selectedFile, openPassword, modifyPassword);
+            console.log("Processing result:", result);
+            
+            if (result.success) {
+                statusElement.textContent = 'Análisis completado correctamente! Los datos se han actualizado.';
+                statusElement.style.color = 'green';
+                
+                // Clear the form
+                document.getElementById('excelUpload').value = '';
+                document.getElementById('excelOpenPassword').value = '';
+                document.getElementById('excelModifyPassword').value = '';
+                selectedFile = null;
+                
+                // Reload the data
+                await loadData();
+            } else {
+                throw new Error(result.message || 'Error desconocido al procesar el archivo');
+            }
         } catch (error) {
-        statusElement.textContent = `Error: ${error.message}`;
-        statusElement.style.color = 'red';
-        console.error('Error processing file:', error);
+            console.error('Error details:', error);
+            statusElement.textContent = `Error: ${error.message}`;
+            statusElement.style.color = 'red';
         }
     });
     
     // Add this new function to handle file processing
-    async function processExcelFile(file, password) {
+    async function processExcelFile(file, openPassword, modifyPassword) {
         const formData = new FormData();
         formData.append('file', file);
-        formData.append('password', password || '');
+        if (openPassword) formData.append('openPassword', openPassword);
+        if (modifyPassword) formData.append('modifyPassword', modifyPassword);
     
-        const response = await fetch('/upload', {
-        method: 'POST',
-        body: formData
-        });
+        try {
+            const response = await fetch('http://localhost:8000/upload', {  // Note full URL
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
     
-        if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al procesar el archivo');
+            if (!response.ok) {
+                const errorText = await response.text();
+                throw new Error(errorText || 'Server error');
+            }
+    
+            return await response.json();
+        } catch (error) {
+            console.error("Fetch error:", error);
+            throw new Error(`Network error: ${error.message}`);
         }
-    
-        return response.json();
     }
     
 
@@ -2004,16 +2073,16 @@ function setupEventListeners() {
         const passwordContainer = document.getElementById('passwordContainer');
         
         if (this.files.length > 0) {
-          selectedFile = this.files[0];
-          statusElement.textContent = `Archivo seleccionado: ${selectedFile.name}`;
-          statusElement.style.color = '#0b00a2';
-          passwordContainer.style.display = 'block';
+            selectedFile = this.files[0];
+            statusElement.textContent = `Archivo seleccionado: ${selectedFile.name}`;
+            statusElement.style.color = '#0b00a2';
+            passwordContainer.style.display = 'block'; // Show both password fields
         } else {
-          selectedFile = null;
-          statusElement.textContent = '';
-          passwordContainer.style.display = 'none';
+            selectedFile = null;
+            statusElement.textContent = '';
+            passwordContainer.style.display = 'none'; // Hide both password fields
         }
-      });
+    });
 }
 
 // excel upload fucntion
@@ -2808,7 +2877,7 @@ function createStructure {
 
     # Create Python virtual environment
     python -m venv .venv
-    .\.venv\Scripts\Activate.ps1
+    .\.venv\scripts\activate
 
     # Upgrade pip and install required packages
     python -m pip install --upgrade pip
