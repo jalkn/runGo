@@ -34,6 +34,8 @@ Después "Analizar Archivo",  Tambien la carpeta `tables/` contendrá los result
 
 ```
 arpa/
+├── django/
+│   └── runGo.py
 ├── models/
 │   ├── passKey.py
 │   ├── fk1Data.py
@@ -72,6 +74,5 @@ arpa/
 ├── index.html
 ├── .gitignore
 ├── README.md
-├── app.py
 └── run.ps1
 ```

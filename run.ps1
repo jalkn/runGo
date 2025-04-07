@@ -1779,7 +1779,6 @@ h1 {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
-    margin-left: 10px;
 }
 
 .filter-buttons button {

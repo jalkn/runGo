@@ -13,5 +13,4 @@ arpa/
 static/
 app.py
 dataHistoricaPBI.xlsx
-
-
+django/
