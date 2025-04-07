@@ -72,117 +72,117 @@ import openpyxl
 import sys
 import os
 import json
+import getpass
+from datetime import datetime
+
+def log_message(message):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {message}")
 
 def remove_excel_password(input_file, output_file=None, open_password=None, modify_password=None):
-    if output_file is None:
-        output_file = input_file
-
+    """Handle both open and modify passwords"""
     try:
-        # Decrypt the file using msoffcrypto-tool
-        decrypted_file = output_file
         with open(input_file, "rb") as file:
             office_file = msoffcrypto.OfficeFile(file)
             
-            # Try with open password first
-            if open_password:
+            # Try both passwords if provided
+            if open_password or modify_password:
                 try:
-                    office_file.load_key(password=open_password)
-                except:
-                    # If open password fails, try modify password
-                    if modify_password:
+                    if open_password:
+                        office_file.load_key(password=open_password)
+                    elif modify_password:
                         office_file.load_key(password=modify_password)
-                    else:
-                        raise Exception("Open password failed and no modify password provided")
+                except Exception as e:
+                    print(f"Password error: {str(e)}")
+                    return False
             else:
                 # Try without password if file isn't encrypted
                 try:
                     office_file.load_key(password=None)
                 except:
-                    # File is encrypted but no password provided
-                    print("Archivo parece estar protegido pero no se proporcionó contraseña")
+                    print("File is password protected but no password provided")
                     return False
             
-            with open(decrypted_file, "wb") as decrypted:
+            with open(output_file, "wb") as decrypted:
                 office_file.decrypt(decrypted)
-
-        print(f"Archivo procesado correctamente. Guardado en '{output_file}'")
+        
+        print(f"File successfully processed. Saved to '{output_file}'")
         return True
+        
     except Exception as e:
-        print(f"Error al procesar el archivo: {e}")
+        print(f"Error processing file: {e}")
         return False
 
 def add_fk_id_estado(input_file, output_file):
     try:
-        # Load the workbook
-        wb = openpyxl.load_workbook(input_file)
+        wb = openpyxl.load_workbook(input_file, read_only=True)  # Use read-only
         ws = wb.active
-
-        # Find or create the "fkIdEstado" column
-        header_row = 1
-        fk_id_col = None
-
-        # Search for existing column
-        for col in range(1, ws.max_column + 1):
-            if ws.cell(row=header_row, column=col).value == "fkIdEstado":
-                fk_id_col = col
-                break
-
-        # If column doesn't exist, add it at the end
-        if fk_id_col is None:
-            fk_id_col = ws.max_column + 1
-            ws.cell(row=header_row, column=fk_id_col, value="fkIdEstado")
-
-        # Fill the column with value 1 (starting from row 2)
-        for row in range(2, ws.max_row + 1):
-            ws.cell(row=row, column=fk_id_col, value=1)
-
-        # Convert to JSON
+        
+        # Find header row
+        headers = [cell.value for cell in ws[1]]
+        
+        # Add fkIdEstado if needed
+        if 'fkIdEstado' not in headers:
+            headers.append('fkIdEstado')
+            fk_col = len(headers)
+        else:
+            fk_col = headers.index('fkIdEstado') + 1
+        
+        # Convert to JSON in chunks
         data = []
-        header = [ws.cell(row=1, column=i).value for i in range(1, ws.max_column + 1)]
-        for row_num in range(2, ws.max_row + 1):
-            row_data = {}
-            for col_num in range(1, ws.max_column + 1):
-                row_data[header[col_num - 1]] = ws.cell(row=row_num, column=col_num).value
+        chunk_size = 1000
+        print(f"Total rows to process: {ws.max_row}")
+        
+        for row_num, row in enumerate(ws.iter_rows(min_row=2), start=2):
+            if row_num % chunk_size == 0:
+                print(f"Processed {row_num} rows")
+                
+            row_data = {headers[i]: cell.value for i, cell in enumerate(row)}
+            row_data['fkIdEstado'] = 1
             data.append(row_data)
-
+        
         with open(output_file, 'w', encoding='utf-8') as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
-
-        print(f"File with 'fkIdEstado' column added and saved as JSON to '{output_file}'.")
+            
+        print(f"Successfully processed {len(data)} rows")
         return True
+        
     except Exception as e:
-        print(f"Error while adding 'fkIdEstado' column and converting to JSON: {e}")
+        print(f"Error: {str(e)}")
         return False
 
 if __name__ == "__main__":
-    # Prompt user to place the file in src/ directory
-    input("Pega el archivo de Excel file en la carpeta 'src/' y asegura de nombrarlo 'dataHistoricaPBI.xlsx'. y presiona Enter cuando este listo...")
+    try:
+        input("\nPega el archivo de Excel en la carpeta 'src/' y asegúrate de nombrarlo 'dataHistoricaPBI.xlsx'. Presiona Enter cuando esté listo...")
 
-    # Check if file exists
-    input_excel_file = "src/dataHistoricaPBI.xlsx"
-    if not os.path.exists(input_excel_file):
-        print(f"Error: File '{input_excel_file}' not found. Please make sure:")
-        print("1. The 'src/' directory exists")
-        print("2. The file is placed in the 'src/' directory")
-        print("3. The file is named 'dataHistoricaPBI.xlsx'")
-        sys.exit(1)
+        input_excel_file = "src/dataHistoricaPBI.xlsx"
+        if not os.path.exists(input_excel_file):
+            log_message(f"ERROR: No se encontró el archivo '{input_excel_file}'")
+            log_message("Por favor verifica:")
+            log_message("1. Que existe el directorio 'src/'")
+            log_message("2. Que el archivo está en 'src/'")
+            log_message("3. Que el archivo se llama 'dataHistoricaPBI.xlsx'")
+            sys.exit(1)
 
-    # First output file (decrypted)
-    output_excel_file = "src/data.xlsx"
+        output_excel_file = "src/data.xlsx"
+        output_json_file = "src/fk1data.json"
 
-    # Second output file with fkIdEstado column (JSON format)
-    output_json_file = "src/fk1data.json"  # Changed extension to .json
-
-    if remove_excel_password(input_excel_file, output_excel_file):
-        # If decryption succeeded, create the modified JSON file
-        if add_fk_id_estado(output_excel_file, output_json_file):
-            print("Both processes completed successfully:")
-            print(f"- Decrypted file: {output_excel_file}")
-            print(f"- File with fkIdEstado column (JSON): {output_json_file}")
+        if remove_excel_password(input_excel_file, output_excel_file):
+            if add_fk_id_estado(output_excel_file, output_json_file):
+                log_message("\nPROCESO COMPLETADO EXITOSAMENTE")
+                log_message(f"- Archivo desencriptado: {output_excel_file}")
+                log_message(f"- Archivo JSON generado: {output_json_file}")
+            else:
+                log_message("\nPROCESO PARCIALMENTE COMPLETADO")
+                log_message(f"- Archivo desencriptado: {output_excel_file}")
+                log_message("- Falló la generación del archivo JSON")
         else:
-            print("Process partially completed - decrypted file created but failed to add fkIdEstado column and convert to JSON.")
-    else:
-        print("Process failed - could not decrypt the input file.")
+            log_message("\nPROCESO FALLIDO")
+            log_message("- No se pudo desencriptar el archivo de entrada")
+    except KeyboardInterrupt:
+        log_message("\nOperación cancelada por el usuario")
+    except Exception as e:
+        log_message(f"\nERROR INESPERADO: {str(e)}")
 "@
 }
 
@@ -1929,13 +1929,14 @@ document.addEventListener('DOMContentLoaded', () => {
 // Load JSON data
 async function loadData() {
     try {
+        const timestamp = new Date().getTime();
         document.querySelector('#results tbody').innerHTML = `
             <tr>
                 <td colspan="35" class="loading">Cargando datos...</td>
             </tr>
         `;
 
-        const response = await fetch(currentDataSource);
+        const response = await fetch(`${currentDataSource}?t=${timestamp}`);
         if (!response.ok) throw new Error(`Error al cargar ${currentDataSource}`);
         
         allData = await response.json();
