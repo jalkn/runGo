@@ -14,3 +14,10 @@ static/
 app.py
 dataHistoricaPBI.xlsx
 django/
+toICO.py
+favicon.ico
+arpy.spec
+build.ps1
+dist/
+arpy.py
+build/

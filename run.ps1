@@ -2,7 +2,6 @@
 
 $GREEN = "Green"
 $YELLOW = "Yellow"
-$NC = "White"
 
 function createPeriod {
     Write-Host "🏗️ Creating periodoBR" -ForegroundColor $YELLOW
@@ -1351,11 +1350,11 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
         <select id="column" aria-label="Seleccionar columna para filtrar" title="Columna para filtrar">
             <option value="">-- Selecciona columna --</option>
             <optgroup label="Información Personal">
-                <option value="Usuario">Nombre</option>
+                <option value="Nombre">Nombre</option>
                 <option value="Año Declaración">Año Declaración</option>
                 <option value="Compañía">Compañía</option>
                 <option value="Cargo">Cargo</option>
-                <option value="Nombre">Usuario</option>
+                <option value="Usuario">Usuario</option>
             </optgroup>
             <optgroup label="Valores Principales">
                 <option value="Activos">Activos</option>
