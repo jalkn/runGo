@@ -109,8 +109,9 @@ def remove_excel_password(input_file, output_file=None, open_password=None, modi
         return True
         
     except Exception as e:
-        print(f"Error processing file: {e}")
-        return False
+        if 'password' in str(e).lower():
+            raise Exception("La contraseña proporcionada es incorrecta")
+        raise
 
 def add_fk_id_estado(input_file, output_file):
     try:
@@ -182,6 +183,7 @@ if __name__ == "__main__":
         log_message("\nOperación cancelada por el usuario")
     except Exception as e:
         log_message(f"\nERROR INESPERADO: {str(e)}")
+
 "@
 }
 
@@ -1336,14 +1338,29 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
         
         <!-- Password container -->
         <div id="passwordContainer" style="display: none;">
-            <input type="password"
-                   id="excelOpenPassword" 
-                   placeholder="(si tiene contraseña)">
-            <input type="password"
-                   id="excelModifyPassword" 
-                   placeholder="(si tiene contraseña de modificación)">
+            <div class="password-input-group">
+                <input type="password" 
+                       id="excelOpenPassword" 
+                       placeholder="Contraseña de apertura (si tiene)"
+                       class="password-input">
+                <span class="toggle-password" onclick="togglePassword('excelOpenPassword')">👁️</span>
+            </div>
+            <div class="password-input-group">
+                <input type="password" 
+                       id="excelModifyPassword" 
+                       placeholder="Contraseña de modificación (si tiene)"
+                       class="password-input">
+                <span class="toggle-password" onclick="togglePassword('excelModifyPassword')">👁️</span>
+            </div>
+            <div id="passwordError" class="error-message"></div>
         </div>
+        
         <button id="analyzeButton">Analizar Archivo</button>
+    </div>
+
+    <div id="loadingBarContainer" style="display: none;">
+        <div id="loadingBar"></div>
+        <div id="loadingText">Analizando archivo...</div>
     </div>
 
     <div class="filter-form">
@@ -1801,6 +1818,101 @@ h1 {
     border-color: #0b00a2;
 }
 
+#loadingBarContainer {
+    width: 100%;
+    background-color: #f1f1f1;
+    padding: 3px;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+#loadingBar {
+    width: 0%;
+    height: 20px;
+    background-color: #00a231;
+    border-radius: 3px;
+    transition: width 0.3s;
+    text-align: center;
+    line-height: 20px;
+    color: white;
+}
+
+#loadingText {
+    text-align: center;
+    margin-top: 5px;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+.password-input-group {
+    position: relative;
+    margin-bottom: 10px;
+    display: inline-block;
+    vertical-align: top;
+}
+
+.password-input {
+    padding: 8px 35px 8px 12px;
+    width: 100%;
+    max-width: 300px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    transition: border-color 0.3s;
+}
+
+.password-input:focus {
+    border-color: #0b00a2;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(11, 0, 162, 0.2);
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+    user-select: none;
+    opacity: 0.6;
+    transition: opacity 0.3s;
+}
+
+.toggle-password:hover {
+    opacity: 1;
+}
+
+.error-message {
+    color: #dc3545;
+    font-size: 0.8rem;
+    margin-top: 5px;
+    height: 20px;
+}
+
+.password-strength {
+    margin-top: 5px;
+    height: 4px;
+    background-color: #eee;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.password-strength-bar {
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s, background-color 0.3s;
+}
+
+/* Add these for the shake animation */
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+}
+
+.shake {
+    animation: shake 0.6s;
+}
+
 @media (max-width: 768px) {
     .filter-form select, 
     .filter-form input, 
@@ -1837,6 +1949,7 @@ h1 {
 }
 
 #passwordContainer {
+display: flex;
 margin-top: 15px;
 padding: 10px;
 background: #f5f5f5;
@@ -1952,22 +2065,73 @@ async function loadData() {
     }
 }
 
-// Add analyze button functionality
+    function togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        const toggle = input.nextElementSibling;
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            toggle.textContent = '🙈';
+        } else {
+            input.type = 'password';
+            toggle.textContent = '👁️';
+        }
+    }
+
+    function showPasswordError(message) {
+        const errorElement = document.getElementById('passwordError');
+        errorElement.textContent = message;
+        
+        // Add shake animation to password inputs
+        document.querySelectorAll('.password-input').forEach(input => {
+            input.classList.add('shake');
+            setTimeout(() => input.classList.remove('shake'), 600);
+        });
+        
+        // Highlight inputs in red
+        document.querySelectorAll('.password-input').forEach(input => {
+            input.style.borderColor = '#dc3545';
+            setTimeout(() => {
+                input.style.borderColor = input === document.activeElement ? '#0b00a2' : '#ddd';
+            }, 2000);
+        });
+    }
+
+    function clearPasswordError() {
+        document.getElementById('passwordError').textContent = '';
+        document.querySelectorAll('.password-input').forEach(input => {
+            input.style.borderColor = input === document.activeElement ? '#0b00a2' : '#ddd';
+        });
+    }
+
+    // Update your analyzeButton click handler to handle password errors
     document.getElementById('analyzeButton').addEventListener('click', async function() {
         if (!selectedFile) {
             alert('Por favor seleccione un archivo primero');
             return;
         }
         
+        clearPasswordError();
+        
         const openPassword = document.getElementById('excelOpenPassword').value;
         const modifyPassword = document.getElementById('excelModifyPassword').value;
         const statusElement = document.getElementById('fileUploadStatus');
+        const loadingBarContainer = document.getElementById('loadingBarContainer');
+        const loadingBar = document.getElementById('loadingBar');
         
         try {
-            statusElement.textContent = 'Procesando archivo...';
+            // Show loading bar
+            loadingBarContainer.style.display = 'block';
+            loadingBar.style.width = '10%';
+            statusElement.textContent = 'Preparando análisis...';
             statusElement.style.color = '#0b00a2';
             
             const result = await processExcelFile(selectedFile, openPassword, modifyPassword);
+            
+            // Complete the progress bar
+            loadingBar.style.width = '100%';
+            statusElement.textContent = 'Finalizando...';
+            
             console.log("Processing result:", result);
             
             if (result.success) {
@@ -1980,14 +2144,31 @@ async function loadData() {
                 document.getElementById('excelModifyPassword').value = '';
                 selectedFile = null;
                 
+                // Hide loading bar after a short delay
+                setTimeout(() => {
+                    loadingBarContainer.style.display = 'none';
+                    loadingBar.style.width = '0%';
+                }, 1000);
+                
                 // Reload the data
                 await loadData();
             } else {
+                if (result.message && result.message.toLowerCase().includes('password')) {
+                    showPasswordError('Contraseña incorrecta. Por favor intente nuevamente.');
+                }
                 throw new Error(result.message || 'Error desconocido al procesar el archivo');
             }
         } catch (error) {
             console.error('Error details:', error);
-            statusElement.textContent = `Error: ${error.message}`;
+            loadingBarContainer.style.display = 'none';
+            loadingBar.style.width = '0%';
+            
+            if (error.message.toLowerCase().includes('password')) {
+                showPasswordError('Contraseña incorrecta. Por favor intente nuevamente.');
+                statusElement.textContent = 'Error: Contraseña incorrecta';
+            } else {
+                statusElement.textContent = `Error: ${error.message}`;
+            }
             statusElement.style.color = 'red';
         }
     });
