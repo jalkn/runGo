@@ -33,8 +33,6 @@ After "Analyze File", the `tables/` folder will also contain the analysis result
 
 ```
 arpa/
-├── django/
-│   └── runGo.py
 ├── models/
 │   ├── passKey.py
 │   ├── server.py

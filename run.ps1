@@ -1454,9 +1454,9 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
             <thead>
                 <tr>
                     <th style="position: sticky; left: 0; top: 0; background-color: #f0f0f0; z-index: 2; padding: 8px; border: 1px solid #ddd;"><button onclick="quickFilter('Nombre')">Nombre<span class="sort-icon">↕</span></button></th>
-                    <th style="position: sticky; left: 150px; top: 0; background-color: #f0f0f0; z-index: 2; padding: 8px; border: 1px solid #ddd;"><button onclick="quickFilter('Año Declaración')">Año Declaración<span class="sort-icon">↕</span></button></th>
-                    <th style="position: sticky; left: 300px; top: 0; background-color: #f0f0f0; z-index: 2; padding: 8px; border: 1px solid #ddd;"><button onclick="quickFilter('Compañía')">Compañía<span class="sort-icon">↕</span></button></th>
-                    <th style="position: sticky; left: 420px; top: 0; background-color: #f0f0f0; z-index: 2; padding: 8px; border: 1px solid #ddd;"><button onclick="quickFilter('Cargo')">Cargo<span class="sort-icon">↕</span></button></th>
+                    <th style="position: sticky; left: 100px; top: 0; background-color: #f0f0f0; z-index: 2; padding: 8px; border: 1px solid #ddd;"><button onclick="quickFilter('Año Declaración')">Año Declaración<span class="sort-icon">↕</span></button></th>
+                    <th style="position: sticky; left: 150px; top: 0; background-color: #f0f0f0; z-index: 2; padding: 8px; border: 1px solid #ddd;"><button onclick="quickFilter('Compañía')">Compañía<span class="sort-icon">↕</span></button></th>
+                    <th style="position: sticky; left: 250px; top: 0; background-color: #f0f0f0; z-index: 2; padding: 8px; border: 1px solid #ddd;"><button onclick="quickFilter('Cargo')">Cargo<span class="sort-icon">↕</span></button></th>
                     <th><button onclick="quickFilter('Usuario')">Usuario<span class="sort-icon">↕</span></button></th>
                     <th><button onclick="quickFilter('Activos')">Activos<span class="sort-icon">↕</span></button></th>
                     <th><button onclick="quickFilter('Pasivos')">Pasivos<span class="sort-icon">↕</span></button></th>
@@ -2057,7 +2057,7 @@ async function loadData() {
         console.error('Error:', error);
         document.querySelector('#results tbody').innerHTML = `
             <tr>
-                <td colspan="35">Error al cargar ${currentDataSource}: ${error.message}</td>
+                <td colspan="35">Carga el archivo excel para generar el análisis de datos</td>
             </tr>
         `;
     }
@@ -2118,7 +2118,6 @@ async function loadData() {
         const loadingBar = document.getElementById('loadingBar');
         
         try {
-            // Show loading bar
             loadingBarContainer.style.display = 'block';
             loadingBar.style.width = '10%';
             statusElement.textContent = 'Preparando análisis...';
@@ -2126,34 +2125,25 @@ async function loadData() {
             
             const result = await processExcelFile(selectedFile, openPassword, modifyPassword);
             
-            // Complete the progress bar
             loadingBar.style.width = '100%';
             statusElement.textContent = 'Finalizando...';
-            
-            console.log("Processing result:", result);
             
             if (result.success) {
                 statusElement.textContent = 'Análisis completado correctamente! Los datos se han actualizado.';
                 statusElement.style.color = 'green';
                 
-                // Clear the form
                 document.getElementById('excelUpload').value = '';
                 document.getElementById('excelOpenPassword').value = '';
                 document.getElementById('excelModifyPassword').value = '';
                 selectedFile = null;
                 
-                // Hide loading bar after a short delay
                 setTimeout(() => {
                     loadingBarContainer.style.display = 'none';
                     loadingBar.style.width = '0%';
                 }, 1000);
                 
-                // Reload the data
                 await loadData();
             } else {
-                if (result.message && result.message.toLowerCase().includes('password')) {
-                    showPasswordError('Contraseña incorrecta. Por favor intente nuevamente.');
-                }
                 throw new Error(result.message || 'Error desconocido al procesar el archivo');
             }
         } catch (error) {
@@ -2161,9 +2151,12 @@ async function loadData() {
             loadingBarContainer.style.display = 'none';
             loadingBar.style.width = '0%';
             
-            if (error.message.toLowerCase().includes('password')) {
-                showPasswordError('Contraseña incorrecta. Por favor intente nuevamente.');
-                statusElement.textContent = 'Error: Contraseña incorrecta';
+            // This is where we simplify the error message
+            if (error.message.toLowerCase().includes('intenta de nuevo') || 
+                error.message.toLowerCase().includes('password') || 
+                error.message.toLowerCase().includes('contraseña')) {
+                showPasswordError('Verifica tu contraseña');
+                statusElement.textContent = 'Intenta de nuevo';
             } else {
                 statusElement.textContent = `Error: ${error.message}`;
             }
@@ -2179,7 +2172,7 @@ async function loadData() {
         if (modifyPassword) formData.append('modifyPassword', modifyPassword);
     
         try {
-            const response = await fetch('http://localhost:8000/upload', {  // Note full URL
+            const response = await fetch('http://localhost:8000/upload', {
                 method: 'POST',
                 body: formData,
                 headers: {
@@ -2188,14 +2181,17 @@ async function loadData() {
             });
     
             if (!response.ok) {
-                const errorText = await response.text();
-                throw new Error(errorText || 'Server error');
+                const errorData = await response.json();
+                if (errorData.message && errorData.message.toLowerCase().includes('contraseña')) {
+                    throw new Error('Intenta de nuevo');
+                }
+                throw new Error(errorData.message || 'Error desconocido');
             }
     
             return await response.json();
         } catch (error) {
             console.error("Fetch error:", error);
-            throw new Error(`Network error: ${error.message}`);
+            throw error; // This will be caught by the calling function
         }
     }
     
@@ -2675,7 +2671,7 @@ function renderTable() {
     if (filteredData.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="37">No se encontraron resultados con los filtros aplicados</td>
+                <td colspan="37">Generando datos desde el archivo excel</td>
             </tr>
         `;
         return;
@@ -2712,9 +2708,9 @@ function renderTable() {
         return `
             <tr>
                 <td style="position: sticky; left: 0; background-color: white; z-index: 2;">${item.Nombre || ''}</td>
-                <td style="position: sticky; left: 150px; background-color: white; z-index: 2;">${item['Año Declaración'] || ''}</td>
-                <td style="position: sticky; left: 300px; background-color: white; z-index: 2;">${item['Compañía'] || ''}</td>
-                <td style="position: sticky; left: 420px; background-color: white; z-index: 2;">${item.Cargo || ''}</td>
+                <td style="position: sticky; left: 100px; background-color: white; z-index: 2;">${item['Año Declaración'] || ''}</td>
+                <td style="position: sticky; left: 150px; background-color: white; z-index: 2;">${item['Compañía'] || ''}</td>
+                <td style="position: sticky; left: 250px; background-color: white; z-index: 2;">${item.Cargo || ''}</td>
                 <td>${item.Usuario || ''}</td>
                 <td>${formatCell(item.Activos)}</td>
                 <td>${formatCell(item.Pasivos)}</td>
