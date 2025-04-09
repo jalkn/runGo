@@ -1325,6 +1325,12 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     </div>
     
     <h1>Bienes y Rentas</h1>
+
+    <div id="loadingBarContainer" style="display: none;">
+        <div id="loadingBar"></div>
+        <div id="loadingText">Analizando archivo...</div>
+    </div>
+    
     <div class="filter-form">
         <label for="excelUpload" class="file-upload-label">
           <span class="file-upload-button">Cargar archivo Excel</span>
@@ -1335,8 +1341,6 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
                  class="file-upload-input">
         </label>
         <span id="fileUploadStatus" aria-live="polite" class="file-upload-status"></span>
-        
-        <div id="passwordAndAnalyzeContainer" style="align-items: center;">
             
             <div id="passwordContainer" style="display: none;">
                 <div class="password-input-group">
@@ -1353,17 +1357,13 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
                         class="password-input">
                     <span class="toggle-password" onclick="togglePassword('excelModifyPassword')">👁️</span>
                 </div>
-                <div id="passwordError" class="error-message"></div>
-            </div>
+                
         </div>
         
         <button id="analyzeButton">Analizar Archivo</button>
+        <div id="passwordError" class="error-message"></div>
     </div>
 
-    <div id="loadingBarContainer" style="display: none;">
-        <div id="loadingBar"></div>
-        <div id="loadingText">Analizando archivo...</div>
-    </div>
 
     <div class="filter-form">
         <select id="column" aria-label="Seleccionar columna para filtrar" title="Columna para filtrar">
