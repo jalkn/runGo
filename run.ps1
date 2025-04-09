@@ -1336,23 +1336,25 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
         </label>
         <span id="fileUploadStatus" aria-live="polite" class="file-upload-status"></span>
         
-        <!-- Password container -->
-        <div id="passwordContainer" style="display: none;">
-            <div class="password-input-group">
-                <input type="password" 
-                       id="excelOpenPassword" 
-                       placeholder="Contraseña de apertura (si tiene)"
-                       class="password-input">
-                <span class="toggle-password" onclick="togglePassword('excelOpenPassword')">👁️</span>
+        <div id="passwordAndAnalyzeContainer" style="align-items: center;">
+            
+            <div id="passwordContainer" style="display: none;">
+                <div class="password-input-group">
+                    <input type="password" 
+                        id="excelOpenPassword" 
+                        placeholder="Contraseña de apertura (si tiene)"
+                        class="password-input">
+                    <span class="toggle-password" onclick="togglePassword('excelOpenPassword')">👁️</span>
+                </div>
+                <div class="password-input-group">
+                    <input type="password" 
+                        id="excelModifyPassword" 
+                        placeholder="Contraseña de modificación (si tiene)"
+                        class="password-input">
+                    <span class="toggle-password" onclick="togglePassword('excelModifyPassword')">👁️</span>
+                </div>
+                <div id="passwordError" class="error-message"></div>
             </div>
-            <div class="password-input-group">
-                <input type="password" 
-                       id="excelModifyPassword" 
-                       placeholder="Contraseña de modificación (si tiene)"
-                       class="password-input">
-                <span class="toggle-password" onclick="togglePassword('excelModifyPassword')">👁️</span>
-            </div>
-            <div id="passwordError" class="error-message"></div>
         </div>
         
         <button id="analyzeButton">Analizar Archivo</button>
@@ -1881,13 +1883,6 @@ h1 {
     opacity: 1;
 }
 
-.error-message {
-    color: #dc3545;
-    font-size: 0.8rem;
-    margin-top: 5px;
-    height: 20px;
-}
-
 .password-strength {
     margin-top: 5px;
     height: 4px;
@@ -1948,12 +1943,31 @@ h1 {
     }
 }
 
+#passwordAndAnalyzeContainer {
+    display: flex; /* Use flexbox for alignment */
+    align-items: center; /* Vertically align items */
+    gap: 10px; /* Add some space between the password inputs and the button */
+    flex-wrap: wrap; /* Allow wrapping on smaller screens */
+}
+
 #passwordContainer {
-display: flex;
-margin-top: 15px;
-padding: 10px;
-background: #f5f5f5;
-border-radius: 4px;
+    display: flex; /* Make password inputs also use flexbox */
+}
+
+@media (max-width: 768px) {
+    #passwordAndAnalyzeContainer {
+        flex-direction: column; /* Stack vertically on smaller screens */
+    }
+    #passwordContainer {
+       width:100%;
+    }
+    .password-input {
+        width: 100%;
+    }
+    #analyzeButton {
+        width: 100%; /* Button takes full width on smaller screens */
+    }
+
 }
 
 #excelPassword {
