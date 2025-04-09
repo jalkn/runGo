@@ -1,36 +1,35 @@
-# A R P A
+# r u n G O
 
-Este repositorio en su primera version contiene los scripts y filtros necesarios para analizar datos históricos en el archivo dataHistoricaPBI.xlsx.
+This repository contains the scripts and filters needed to financial historical analyze historical data.
 
-## 1. Preparación
+## 1. Preparation
 
-Ejecute el script principal `run.ps1`. Este script instala las dependencias, crea los scripts de análisis, se abrira en el navegador el entorno de análisis.
+Execute the main script `run.ps1`. This script installs the dependencies, creates the analysis scripts, and opens the analysis environment in your browser.
 
 ```powershell
 .\run.ps1
 ```
 
-## 2. Ejecución del análisis y Visualización de datos
+## 2. Analysis Execution and Data Visualization
 
-1. Ejecuta el script en la terminal
+1. Run the script in the terminal:
 
 ```
 python app.py
 ```
-2. Cargue el archivo dataHistoricaPBI.xlsx dando click en "Cargar archivo Excel", ingrese la contraseña y genera la tabla dando click "Analizar Archivo". El navegador mostrará los datos.  
+2. Load the excel file by clicking on "Load Excel File", enter the password, and generate the table by clicking "Analyze File". The browser will display the data.
 
-3. Para filtrar los datos:
+3. To filter the data:
 
-- Utilice los botones para agregar, visualizar, reiniciar y aplicar filtros.
+- Use the buttons to add, view, reset, and apply filters.
 
-- Guarde los resultados filtrados en la carpeta de descragas/ con el botón "Guardar Excel".
+- Save the filtered results to the downloads folder with the "Save Excel" button.
 
-- Dando click en detalles puede visualizar todos los datos por fila y guardar en excel.
+- By clicking on "details", you can view all data per row and save it to Excel.
 
+## 3. Results
 
-## 3. Resultados
-
-Después "Analizar Archivo",  Tambien la carpeta `tables/` contendrá los resultados del análisis en archivos Excel, organizados en las subcarpetas `cats/`, `nets/` y `trends/`.  La estructura resultante será similar a la siguiente:
+After "Analyze File", the `tables/` folder will also contain the analysis results in Excel files, organized in the subfolders `cats/`, `nets/`, and `trends/`. The resulting structure will be similar to the following:     
 
 ```
 arpa/
@@ -45,28 +44,12 @@ arpa/
 │   ├── period.py
 │   └── trends.py
 ├── src/
-│   ├── dataHistoricaPBI.xlsx
-│   ├── data.json
-│   ├── fk1Data.json
-│   └── periodoPBI.xlsx
+│   ├── excelFile.xlsx
+│   └── data.json
 ├── tables/
 │   ├── cats/
-│   │   ├── banks.xlsx
-│   │   ├── debts.xlsx
-│   │   ├── goods.xlsx
-│   │   ├── incomes.xlsx
-│   │   └── investments.xlsx
 │   ├── nets/
-│   │   ├── assetNets.xlsx
-│   │   ├── bankNets.xlsx
-│   │   ├── debtNets.xlsx
-│   │   ├── goodNets.xlsx
-│   │   ├── incomeNets.xlsx
-│   │   ├── investNets.xlsx
-│   │   └── worthNets.xlsx
 │   └── trends/
-│       ├── overTrends.xlsx
-│       └── trends.xlsx
 ├── static/
 │   ├── style.css
 │   └── script.js
@@ -75,4 +58,3 @@ arpa/
 ├── .gitignore
 ├── README.md
 └── run.ps1
-```
