@@ -2070,6 +2070,117 @@ font-size: 0.9rem;
     cursor: not-allowed;
 }
 
+/* Tab Styles */
+.modal-tabs {
+    display: flex;
+    border-bottom: 1px solid #ddd;
+    margin-bottom: 15px;
+}
+
+.tab-btn {
+    padding: 10px 20px;
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    cursor: pointer;
+    font-weight: bold;
+    color: #666;
+}
+
+.tab-btn.active {
+    color: #0b00a2;
+    border-bottom-color: #0b00a2;
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* Values Tab Styles */
+.values-search {
+    margin-bottom: 15px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+#values-search-input {
+    flex: 1;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+}
+
+.values-count {
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.values-container {
+    max-height: 400px;
+    overflow-y: auto;
+    margin-bottom: 15px;
+    border: 1px solid #eee;
+    border-radius: 4px;
+}
+
+.value-item {
+    display: flex;
+    align-items: center;
+    padding: 8px 12px;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+.value-item:nth-child(even) {
+    background-color: #f9f9f9;
+}
+
+.value-item .value {
+    flex: 2;
+    padding-right: 10px;
+}
+
+.value-item .count {
+    flex: 1;
+    text-align: right;
+    color: #6c757d;
+    font-size: 0.9rem;
+    padding-right: 15px;
+}
+
+.value-item .apply-filter-btn {
+    flex-shrink: 0;
+}
+
+.values-pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.values-pagination button {
+    padding: 5px 10px;
+    background: #f8f9fa;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+.values-pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.values-pagination button:hover:not(:disabled) {
+    background: #e9ecef;
+}
+
 @media (max-width: 768px) {
     .filter-form select, 
     .filter-form input, 
@@ -2135,11 +2246,114 @@ let selectedFile = null;
 const operatorSelect = document.getElementById('operator');
 const value2Input = document.getElementById('value2');
 
-// Initialize the application
+// Global variables for values pagination
+let currentValuesPage = 1;
+const valuesPerPage = 50;
+let currentValuesSearch = '';
+let currentValuesColumn = '';
+
+// Initializing the application
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     setupEventListeners();
 });
+
+function renderValuesPage() {
+    const container = document.getElementById('values-container');
+    if (!container) return;
+    
+    const columnValues = allData.map(item => item[currentValuesColumn]);
+    const valueCounts = {};
+    columnValues.forEach(v => {
+        if (v !== undefined && v !== null) {
+            const val = typeof v === 'string' ? v.trim() : v;
+            valueCounts[val] = (valueCounts[val] || 0) + 1;
+        }
+    });
+    
+    let allValues = Object.keys(valueCounts)
+        .sort((a, b) => {
+            const isNumeric = !isNaN(parseFloat(a)) && !isNaN(parseFloat(b));
+            if (isNumeric) {
+                return parseFloat(a) - parseFloat(b);
+            }
+            return a.localeCompare(b);
+        });
+    
+    // Apply search filter
+    if (currentValuesSearch) {
+        const searchTerm = currentValuesSearch.toLowerCase();
+        allValues = allValues.filter(v => 
+            String(v).toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    const totalValues = allValues.length;
+    const totalPages = Math.ceil(totalValues / valuesPerPage);
+    const startIdx = (currentValuesPage - 1) * valuesPerPage;
+    const endIdx = Math.min(startIdx + valuesPerPage, totalValues);
+    const pageValues = allValues.slice(startIdx, endIdx);
+    
+    // Update UI
+    container.innerHTML = pageValues.map(value => `
+        <div class="value-item">
+            <span class="value">${formatValueForDisplay(value)}</span>
+            <span class="count">${valueCounts[value]} (${Math.round((valueCounts[value] / columnValues.length) * 100)}%)</span>
+            <button onclick="applyCommonValueFilter('${currentValuesColumn}', '${value.replace(/'/g, "\\'")}')" 
+                    class="apply-filter-btn">
+                Filtrar
+            </button>
+        </div>
+    `).join('');
+    
+    document.getElementById('values-showing').textContent = `${startIdx + 1}-${endIdx}`;
+    document.getElementById('values-page-info').textContent = `Página ${currentValuesPage} de ${totalPages}`;
+    document.getElementById('values-prev').disabled = currentValuesPage <= 1;
+    document.getElementById('values-next').disabled = currentValuesPage >= totalPages;
+}
+
+function formatValueForDisplay(value) {
+    if (value === null || value === undefined) return 'N/A';
+    if (typeof value === 'string') return value;
+    if (Math.abs(value) >= 1000000) {
+        return '$' + (value / 1000000).toFixed(2) + 'M';
+    }
+    return new Intl.NumberFormat('es-CO').format(value);
+}
+
+function searchValues(columnName) {
+    currentValuesSearch = document.getElementById('values-search-input').value;
+    currentValuesPage = 1;
+    currentValuesColumn = columnName;
+    renderValuesPage();
+}
+
+function navigateValuesPage(direction) {
+    currentValuesPage += direction;
+    renderValuesPage();
+}
+
+function switchTab(tabId, button) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Deactivate all tab buttons
+    document.querySelectorAll('.modal-tabs .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Activate selected tab
+    document.getElementById(`${tabId}-tab`).classList.add('active');
+    button.classList.add('active');
+    
+    // If switching to values tab and not yet loaded
+    if (tabId === 'values' && document.getElementById('values-container').innerHTML === '') {
+        renderValuesPage();
+    }
+}
+
 
 // Load JSON data
 async function loadData() {
@@ -3082,7 +3296,7 @@ function showColumnStats(columnName) {
     
     // Calculate basic statistics
     const numericValues = values
-        .map(v => parseFloat(v))
+        .map(v => typeof v === 'string' ? parseFloat(v.replace(/[^\d.-]/g, '')) : parseFloat(v))
         .filter(v => !isNaN(v));
         
     const isNumeric = numericValues.length > 0;
@@ -3093,7 +3307,8 @@ function showColumnStats(columnName) {
         min: null,
         max: null,
         avg: null,
-        commonValues: []
+        commonValues: [],
+        allUniqueValues: []
     };
     
     if (isNumeric) {
@@ -3106,7 +3321,8 @@ function showColumnStats(columnName) {
     const valueCounts = {};
     values.forEach(v => {
         if (v !== undefined && v !== null) {
-            valueCounts[v] = (valueCounts[v] || 0) + 1;
+            const val = typeof v === 'string' ? v.trim() : v;
+            valueCounts[val] = (valueCounts[val] || 0) + 1;
         }
     });
     
@@ -3115,75 +3331,111 @@ function showColumnStats(columnName) {
         .slice(0, 5)
         .map(([value, count]) => ({ value, count }));
     
+    // Get all unique values (sorted)
+    stats.allUniqueValues = Object.keys(valueCounts)
+        .sort((a, b) => {
+            if (isNumeric) {
+                return parseFloat(a) - parseFloat(b);
+            }
+            return a.localeCompare(b);
+        });
+    
     // Format numbers for display
     const formatNumber = (num) => {
         if (num === null || num === undefined) return 'N/A';
+        if (typeof num === 'string') return num;
         if (Math.abs(num) >= 1000000) {
             return '$' + (num / 1000000).toFixed(2) + 'M';
         }
         return new Intl.NumberFormat('es-CO').format(num);
     };
     
-    // Create modal HTML
+    // Create modal HTML with tabs
     const modalHTML = `
         <div id="columnStatsModal" class="modal-overlay">
-            <div class="modal-content">
+            <div class="modal-content" style="max-width: 800px;">
                 <div class="modal-header">
                     <h2>Estadísticas de Columna: ${columnName}</h2>
                     <button onclick="closeModal()" class="close-button">×</button>
                 </div>
+                
+                <div class="modal-tabs">
+                    <button class="tab-btn active" onclick="switchTab('stats', this)">Estadísticas</button>
+                    <button class="tab-btn" onclick="switchTab('values', this)">Todos los Valores (${stats.allUniqueValues.length})</button>
+                </div>
+                
                 <div class="modal-body">
-                    <div class="stats-grid">
-                        <div class="stat-item">
-                            <strong>Total de valores:</strong>
-                            <span>${stats.count}</span>
+                    <div id="stats-tab" class="tab-content active">
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <strong>Total de valores:</strong>
+                                <span>${stats.count}</span>
+                            </div>
+                            <div class="stat-item">
+                                <strong>Valores únicos:</strong>
+                                <span>${stats.uniqueCount}</span>
+                            </div>
+                            ${isNumeric ? `
+                            <div class="stat-item">
+                                <strong>Mínimo:</strong>
+                                <span>${formatNumber(stats.min)}</span>
+                            </div>
+                            <div class="stat-item">
+                                <strong>Máximo:</strong>
+                                <span>${formatNumber(stats.max)}</span>
+                            </div>
+                            <div class="stat-item">
+                                <strong>Promedio:</strong>
+                                <span>${formatNumber(stats.avg)}</span>
+                            </div>
+                            ` : ''}
                         </div>
-                        <div class="stat-item">
-                            <strong>Valores únicos:</strong>
-                            <span>${stats.uniqueCount}</span>
+                        
+                        <div class="common-values-section">
+                            <h3>Valores más comunes</h3>
+                            <div class="common-values-grid">
+                                ${stats.commonValues.map(item => `
+                                    <div class="common-value-item">
+                                        <span class="value">${formatNumber(item.value)}</span>
+                                        <span class="count">${item.count} (${Math.round((item.count / stats.count) * 100)}%)</span>
+                                        <button onclick="applyCommonValueFilter('${columnName}', '${item.value.replace(/'/g, "\\'")}')" 
+                                                class="apply-filter-btn">
+                                            Filtrar
+                                        </button>
+                                    </div>
+                                `).join('')}
+                            </div>
                         </div>
-                        ${isNumeric ? `
-                        <div class="stat-item">
-                            <strong>Mínimo:</strong>
-                            <span>${formatNumber(stats.min)}</span>
+                        
+                        <div class="quick-filter-actions">
+                            <button onclick="applyMinMaxFilter('${columnName}', 'min')" class="action-btn">
+                                Filtrar por mínimo
+                            </button>
+                            <button onclick="applyMinMaxFilter('${columnName}', 'max')" class="action-btn">
+                                Filtrar por máximo
+                            </button>
+                            <button onclick="applyAvgFilter('${columnName}')" class="action-btn" ${!isNumeric ? 'disabled' : ''}>
+                                Filtrar por promedio
+                            </button>
                         </div>
-                        <div class="stat-item">
-                            <strong>Máximo:</strong>
-                            <span>${formatNumber(stats.max)}</span>
-                        </div>
-                        <div class="stat-item">
-                            <strong>Promedio:</strong>
-                            <span>${formatNumber(stats.avg)}</span>
-                        </div>
-                        ` : ''}
                     </div>
                     
-                    <div class="common-values-section">
-                        <h3>Valores más comunes</h3>
-                        <div class="common-values-grid">
-                            ${stats.commonValues.map(item => `
-                                <div class="common-value-item">
-                                    <span class="value">${item.value}</span>
-                                    <span class="count">${item.count} (${Math.round((item.count / stats.count) * 100)}%)</span>
-                                    <button onclick="applyCommonValueFilter('${columnName}', '${item.value}')" 
-                                            class="apply-filter-btn">
-                                        Filtrar
-                                    </button>
-                                </div>
-                            `).join('')}
+                    <div id="values-tab" class="tab-content">
+                        <div class="values-search">
+                            <input type="text" id="values-search-input" placeholder="Buscar valores..." 
+                                   oninput="searchValues('${columnName}')">
+                            <div class="values-count">
+                                Mostrando <span id="values-showing">0</span> de ${stats.allUniqueValues.length} valores
+                            </div>
                         </div>
-                    </div>
-                    
-                    <div class="quick-filter-actions">
-                        <button onclick="applyMinMaxFilter('${columnName}', 'min')" class="action-btn">
-                            Filtrar por mínimo
-                        </button>
-                        <button onclick="applyMinMaxFilter('${columnName}', 'max')" class="action-btn">
-                            Filtrar por máximo
-                        </button>
-                        <button onclick="applyAvgFilter('${columnName}')" class="action-btn" ${!isNumeric ? 'disabled' : ''}>
-                            Filtrar por promedio
-                        </button>
+                        <div class="values-container" id="values-container">
+                            <!-- Values will be loaded here with pagination -->
+                        </div>
+                        <div class="values-pagination">
+                            <button id="values-prev" onclick="navigateValuesPage(-1)" disabled>Anterior</button>
+                            <span id="values-page-info">Página 1</span>
+                            <button id="values-next" onclick="navigateValuesPage(1)">Siguiente</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -3192,6 +3444,12 @@ function showColumnStats(columnName) {
     
     // Add to DOM
     document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Initialize values tab
+    currentValuesPage = 1;
+    currentValuesSearch = '';
+    currentValuesColumn = columnName;
+    renderValuesPage();
 }
 
 function applyCommonValueFilter(columnName, value) {
