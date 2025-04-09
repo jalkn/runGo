@@ -1,6 +1,6 @@
 # r u n G O
 
-This repository contains the scripts and filters needed to financial historical analyze historical data.
+This repository contains the scripts and filters needed to financial historical analyze data.
 
 ## 1. Preparation
 
@@ -37,11 +37,9 @@ arpa/
 │   └── runGo.py
 ├── models/
 │   ├── passKey.py
-│   ├── fk1Data.py
 │   ├── server.py
 │   ├── cats.py
 │   ├── nets.py
-│   ├── period.py
 │   └── trends.py
 ├── src/
 │   ├── excelFile.xlsx

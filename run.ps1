@@ -1325,12 +1325,6 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     </div>
     
     <h1>Bienes y Rentas</h1>
-
-    <div id="loadingBarContainer" style="display: none;">
-        <div id="loadingBar"></div>
-        <div id="loadingText">Analizando archivo...</div>
-    </div>
-    
     <div class="filter-form">
         <label for="excelUpload" class="file-upload-label">
           <span class="file-upload-button">Cargar archivo Excel</span>
@@ -1341,29 +1335,34 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
                  class="file-upload-input">
         </label>
         <span id="fileUploadStatus" aria-live="polite" class="file-upload-status"></span>
-            
+        
             <div id="passwordContainer" style="display: none;">
-                <div class="password-input-group">
-                    <input type="password" 
-                        id="excelOpenPassword" 
-                        placeholder="Contraseña de apertura (si tiene)"
-                        class="password-input">
-                    <span class="toggle-password" onclick="togglePassword('excelOpenPassword')">👁️</span>
+                <div style="display: flex; gap: 15px; width: 100%;">
+                    <div class="password-input-group" style="flex: 1;">
+                        <input type="password" 
+                            id="excelOpenPassword" 
+                            placeholder="Contraseña de apertura"
+                            class="password-input">
+                        <span class="toggle-password" onclick="togglePassword('excelOpenPassword')">👁️</span>
+                    </div>
+                    <div class="password-input-group" style="flex: 1;">
+                        <input type="password" 
+                            id="excelModifyPassword" 
+                            placeholder="Contraseña de modificación"
+                            class="password-input">
+                        <span class="toggle-password" onclick="togglePassword('excelModifyPassword')">👁️</span>
+                    </div>
                 </div>
-                <div class="password-input-group">
-                    <input type="password" 
-                        id="excelModifyPassword" 
-                        placeholder="Contraseña de modificación (si tiene)"
-                        class="password-input">
-                    <span class="toggle-password" onclick="togglePassword('excelModifyPassword')">👁️</span>
-                </div>
-                
-        </div>
+            </div>
         
         <button id="analyzeButton">Analizar Archivo</button>
         <div id="passwordError" class="error-message"></div>
     </div>
 
+    <div id="loadingBarContainer" style="display: none;">
+        <div id="loadingBar"></div>
+        <div id="loadingText">Analizando archivo...</div>
+    </div>
 
     <div class="filter-form">
         <select id="column" aria-label="Seleccionar columna para filtrar" title="Columna para filtrar">
@@ -1512,284 +1511,503 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
 Write-Host "🏗️ Creating CSS" -ForegroundColor $YELLOW
     # css
     Set-Content -Path "static/style.css" -Value @"
-@import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;500;600&display=swap');
-
-:root {
-  --primary-color: #0b00a2;
-  --primary-hover: #09007a;
-  --secondary-color: #f8f9fa;
-  --border-color: #ddd;
-  --hover-color: #f1f1f1;
-  --highlight-color: #f0f5ff;
-  --error-color: #dc3545;
-  --success-color: #00a231;
-}
-
+@import url('https://fonts.googleapis.com/css2?family=Open+Sans&display=swap');
 * {
-  font-family: 'Open Sans', sans-serif;
-  box-sizing: border-box;
+    font-family: 'Open Sans', sans-serif;
+    box-sizing: border-box;
 }
-
 body {
-  margin: 0;
-  padding: 20px;
-  background-color: var(--secondary-color);
+    margin: 0;
+    padding: 20px;
+    background-color: #f8f9fa;
 }
-
-/* Top Navigation */
 .topnav-container {
-  display: flex;
-  align-items: center;
-  margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 20px;
 }
-
 .logoIN {
-  cursor: pointer;
-  width: 40px;
-  height: 40px;
-  background-color: var(--primary-color);
-  border-radius: 8px;
-  position: relative;
+    cursor: pointer;
+    width: 40px;
+    height: 40px;
+    background-color: #0b00a2;
+    border-radius: 8px;
+    display: inline-flex;
+    position: relative;
 }
-
 .logoIN::before {
-  content: "";
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  position: absolute;
-  top: 30%;
-  left: 70%;
-  transform: translate(-50%, -50%);
-  background-image: linear-gradient(
-    to right, 
-    #ffffff 2px, transparent 1.5px,
-    transparent 1.5px, #ffffff 1.5px,
-    #ffffff 2px, transparent 1.5px
-  );
-  background-size: 4px 100%; 
+    content: "";
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    position: absolute;
+    top: 30%;
+    left: 70%;
+    transform: translate(-50%, -50%);
+    background-image: linear-gradient(to right, 
+        #ffffff 2px, transparent 1.5px,
+        transparent 1.5px, #ffffff 1.5px,
+        #ffffff 2px, transparent 1.5px);
+    background-size: 4px 100%; 
 }
-
 .nomPag {
-  margin-left: 10px;
-  color: var(--primary-color);
-  font-weight: 600;
-  font-size: 1rem;
+    margin-left: 10px;
+    color: #0b00a2;
+    font-weight: bold;
+    font-size: 1rem;
 }
-
-/* Filter Form */
+h1 {
+    color: #333;
+    margin-top: 0;
+}
 .filter-form {
-  background: white;
-  padding: 15px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  margin-bottom: 20px;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 10px;
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
 }
-
 .filter-form select, 
-.filter-form input {
-  padding: 8px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  transition: all 0.2s;
-  min-width: 150px;
-}
-
-.filter-form input:focus,
-.filter-form select:focus {
-  outline: none;
-  border-color: var(--primary-color);
-  box-shadow: 0 0 0 2px rgba(11, 0, 162, 0.1);
-}
-
+.filter-form input, 
 .filter-form button {
-  padding: 8px 12px;
-  border-radius: 4px;
-  transition: all 0.2s;
-  cursor: pointer;
-  border: 1px solid transparent;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    transition: all 0.3s;
 }
-
-.filter-form button:not(.active) {
-  background-color: var(--primary-color);
-  color: white;
+.filter-form button {
+    background-color: #0b00a2;
+    color: white;
+    border: none;
+    cursor: pointer;
 }
-
 .filter-form button:hover {
-  background-color: var(--primary-hover);
+    background-color: #09007a;
 }
-
-/* Table Styles */
+.filter-form select:focus, 
+.filter-form select.highlighted {
+    border: 2px solid #0b00a2;
+    background-color: #f0f5ff;
+}
+#filters {
+    margin-bottom: 20px;
+}
+.filter-tag {
+    display: inline-block;
+    background: #e9ecef;
+    padding: 5px 10px;
+    border-radius: 20px;
+    margin-right: 10px;
+    margin-bottom: 10px;
+}
+.filter-tag button {
+    background: none;
+    border: none;
+    color: #dc3545;
+    margin-left: 5px;
+    cursor: pointer;
+}
+.predetermined-filters {
+    background: white;
+    padding: 15px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    margin-bottom: 20px;
+}
+.predetermined-filters label {
+    display: block;
+    margin-bottom: 8px;
+    cursor: pointer;
+}
 .table-scroll-container {
-  position: relative;
-  max-height: calc(100vh - 300px);
-  overflow: auto;
-  margin-top: 20px;
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  background: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    position: relative;
+    height: calc(100vh - 300px);
+    overflow: auto;
+    margin-top: 20px;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
-
 #results {
-  width: max-content;
-  min-width: 100%;
-  border-collapse: separate;
-  border-spacing: 0;
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1200px;
 }
-
-#results th, 
-#results td {
-  padding: 10px 12px;
-  text-align: left;
-  border-bottom: 1px solid var(--border-color);
-  border-right: 1px solid var(--border-color);
-  white-space: nowrap;
-  position: relative;
-  background-color: white;
+#results th, #results td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+    white-space: nowrap;
 }
-
+#results thead {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background-color: #f8f9fa;
+}
 #results th {
-  position: sticky;
-  top: 0;
-  background-color: var(--secondary-color);
-  z-index: 10;
-  font-weight: 600;
-  user-select: none;
+    position: sticky;
+    top: 0;
+    background-color: #f8f9fa;
 }
-
-#results th:last-child,
+#results tr:hover {
+    background-color: #f1f1f1;
+}
+#results tr:hover td {
+    background-color: #f1f1f1;
+}
 #results td:last-child {
-  border-right: none;
+    position: sticky;
+    right: 0;
+    z-index: 5;
+    background-color: white;
 }
-
+#results tr:hover td:last-child {
+    background-color: #f1f1f1;
+}
 #results th button {
-  padding: 0;
-  background: none;
-  border: none;
-  width: 100%;
-  text-align: left;
-  font-weight: inherit;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+    padding: 12px;
+    background: none;
+    border: none;
+    width: 100%;
+    text-align: left;
+    font-weight: bold;
+    cursor: pointer;
 }
 
 #results th button:hover {
-  color: var(--primary-color);
+    color: #0b00a2;
 }
 
 #results th button .sort-icon {
-  margin-left: 5px;
-  opacity: 0.5;
-  transition: opacity 0.2s;
+    margin-left: 5px;
+    opacity: 0.5;
 }
 
 #results th button:hover .sort-icon {
-  opacity: 1;
+    opacity: 1;
 }
 
 #results th.sorted-asc button,
 #results th.sorted-desc button {
-  color: var(--primary-color);
+    color: #0b00a2;
+    font-weight: bold;
 }
 
 #results th.sorted-asc button .sort-icon,
 #results th.sorted-desc button .sort-icon {
-  opacity: 1;
+    opacity: 1;
 }
 
-#results tr:hover td {
-  background-color: var(--hover-color);
+.trend-icon {
+    font-size: 1.2em;
+    margin-left: 3px;
 }
-
-/* Column Resizing */
-#results th {
-  position: relative;
+.loading {
+    text-align: center;
+    padding: 20px;
+    font-style: italic;
+    color: #6c757d;
 }
-
-.resize-handle {
-  position: absolute;
-  top: 0;
-  right: 0;
-  width: 5px;
-  height: 100%;
-  cursor: col-resize;
-  z-index: 20;
-}
-
-.resize-handle:hover,
-.resize-handle.active {
-  background-color: var(--primary-color);
-}
-
-/* Column Highlighting */
 .highlighted-column {
-  background-color: var(--highlight-color) !important;
-  font-weight: 500;
+    background-color: #f0f5ff !important;
+    font-weight: bold;
 }
 
-/* Context Menu */
-.context-menu {
-  position: absolute;
-  background: white;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.15);
-  z-index: 100;
-  display: none;
+/* Modal Styles */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.5);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
 }
-
-.context-menu-item {
-  padding: 8px 16px;
-  cursor: pointer;
-  white-space: nowrap;
-}
-
-.context-menu-item:hover {
-  background-color: var(--hover-color);
-}
-
-/* Responsive */
-@media (max-width: 768px) {
-  .filter-form select, 
-  .filter-form input, 
-  .filter-form button {
-    width: 100%;
-  }
-  
-  #results thead {
-    display: none;
-  }
-  
-  #results tr {
-    display: block;
-    margin-bottom: 15px;
-    border: 1px solid var(--border-color);
+.modal-content {
+    background: white;
+    padding: 20px;
     border-radius: 8px;
-  }
-  
-  #results td {
+    width: 90%;
+    max-width: 800px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+}
+.modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    text-align: right;
-    padding-left: 50%;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+.close-button {
+    background: none;
+    border: none;
+    font-size: 24px;
+    cursor: pointer;
+    color: #666;
+}
+.detail-section {
+    margin-bottom: 25px;
+    padding-bottom: 15px;
+    border-bottom: 1px solid #f0f0f0;
+}
+.detail-section:last-child {
+    border-bottom: none;
+}
+.detail-grid, .variation-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+    gap: 12px;
+}
+.detail-item, .variation-item {
+    padding: 8px;
+    background: #f9f9f9;
+    border-radius: 4px;
+}
+.detail-item strong, .variation-item strong {
+    color: #333;
+}
+.modal-body {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+.detail-section h3 {
+    margin-top: 0;
+    color: #0b00a2;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 8px;
+}
+.variation-item {
+    border-left: 3px solid #0b00a2;
+}
+.filter-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.filter-buttons button {
+    background-color: #e9ecef;
+    color: #495057;
+    border: 1px solid #ced4da;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    transition: all 0.2s;
+}
+
+.filter-buttons button:hover {
+    background-color: #dee2e6;
+}
+
+.filter-buttons button.active {
+    background-color: #0b00a2;
+    color: white;
+    border-color: #0b00a2;
+}
+
+#loadingBarContainer {
+    width: 100%;
+    background-color: #f1f1f1;
+    padding: 3px;
+    border-radius: 5px;
+    margin: 10px 0;
+}
+
+#loadingBar {
+    width: 0%;
+    height: 20px;
+    background-color: #00a231;
+    border-radius: 3px;
+    transition: width 0.3s;
+    text-align: center;
+    line-height: 20px;
+    color: white;
+}
+
+#loadingText {
+    text-align: center;
+    margin-top: 5px;
+    font-size: 0.9rem;
+    color: #333;
+}
+
+#passwordContainer {
+    display: flex;
+    flex-direction: row;
+    gap: 15px; 
+    align-items: center; 
+}
+
+.password-input-group {
     position: relative;
-    border-right: none;
+    min-width: 0; /* Important for flex items */
+}
+
+.password-input {
+    padding: 8px 35px 8px 12px;
+    width: 100%;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-sizing: border-box;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    cursor: pointer;
+}
+
+.password-input:focus {
+    border-color: #0b00a2;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(11, 0, 162, 0.2);
+}
+
+.toggle-password:hover {
+    opacity: 1;
+}
+
+.password-strength {
+    margin-top: 5px;
+    height: 4px;
+    background-color: #eee;
+    border-radius: 2px;
+    overflow: hidden;
+}
+
+.password-strength-bar {
+    height: 100%;
+    width: 0%;
+    transition: width 0.3s, background-color 0.3s;
+}
+
+
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-5px); }
+    40%, 80% { transform: translateX(5px); }
+}
+
+.shake {
+    animation: shake 0.6s;
+}
+
+
+#excelPassword {
+padding: 8px;
+margin: 5px 0;
+width: 100%;
+max-width: 300px;
+border: 1px solid #ddd;
+border-radius: 4px;
+}
+
+/* File Upload Styles */
+.file-upload-container {
+    margin: 10px 0;
   }
   
-  #results td::before {
-    content: attr(data-label);
-    position: absolute;
-    left: 12px;
-    font-weight: bold;
-  }
+.file-upload-label {
+display: inline-block;
+cursor: pointer;
+}
+
+.file-upload-button {
+display: inline-block;
+padding: 8px 12px;
+background-color:rgb(0, 176, 15);
+color: white;
+border-radius: 4px;
+transition: background-color 0.3s;
+}
+
+.file-upload-button:hover {
+background-color: #09007a;
+}
+
+.file-upload-input {
+position: absolute;
+width: 1px;
+height: 1px;
+padding: 0;
+margin: -1px;
+overflow: hidden;
+clip: rect(0, 0, 0, 0);
+border: 0;
+}
+
+.file-upload-help {
+display: block;
+font-size: 0.8rem;
+color: #666;
+margin-top: 4px;
+}
+
+.file-upload-status {
+display: block;
+margin-top: 4px;
+font-size: 0.9rem;
+}
+
+@media (max-width: 768px) {
+    .filter-form select, 
+    .filter-form input, 
+    .filter-form button {
+        width: 100%;
+        margin-right: 0;
+    }
+    #results thead {
+        display: none;
+    }
+    #results tr {
+        display: block;
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+    }
+    #results td {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        text-align: right;
+        padding-left: 50%;
+        position: relative;
+    }
+    #results td::before {
+        content: attr(data-label);
+        position: absolute;
+        left: 12px;
+        font-weight: bold;
+    }
+    .detail-grid, .variation-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #passwordContainer {
+        width:100%;
+     }
+     .password-input {
+         width: 100%;
+     }
+     #analyzeButton {
+         width: 100%; /* Button takes full width on smaller screens */
+     }
 }
 "@
 
