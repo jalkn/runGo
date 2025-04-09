@@ -1965,6 +1965,111 @@ margin-top: 4px;
 font-size: 0.9rem;
 }
 
+/* Column Stats Modal Styles */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.stat-item {
+    background: #f8f9fa;
+    padding: 12px;
+    border-radius: 6px;
+    border-left: 4px solid #0b00a2;
+}
+
+.stat-item strong {
+    display: block;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.stat-item span {
+    font-size: 1.1rem;
+    font-weight: bold;
+    color: #0b00a2;
+}
+
+.common-values-section {
+    margin: 25px 0;
+}
+
+.common-values-section h3 {
+    margin-top: 0;
+    color: #0b00a2;
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 8px;
+}
+
+.common-values-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+}
+
+.common-value-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.common-value-item .value {
+    flex: 2;
+    font-weight: bold;
+}
+
+.common-value-item .count {
+    flex: 1;
+    text-align: right;
+    color: #6c757d;
+    margin: 0 15px;
+}
+
+.apply-filter-btn {
+    background: #0b00a2;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.8rem;
+}
+
+.apply-filter-btn:hover {
+    background: #09007a;
+}
+
+.quick-filter-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    background: #e9ecef;
+    color: #495057;
+    border: 1px solid #ced4da;
+    padding: 8px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.action-btn:hover {
+    background: #dee2e6;
+}
+
+.action-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
 @media (max-width: 768px) {
     .filter-form select, 
     .filter-form input, 
@@ -2344,89 +2449,6 @@ function addFilter() {
     currentFilterColumn = column;
     
     applyFilters();
-}
-
-function quickFilter(columnName) {
-    // If clicking the same column, toggle sort direction
-    if (currentSortColumn === columnName) {
-        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-    } else {
-        currentSortColumn = columnName;
-        sortDirection = 'asc';
-    }
-    
-    // Remove any existing sort indicators
-    document.querySelectorAll('#results th').forEach(th => {
-        th.classList.remove('sorted-asc', 'sorted-desc');
-    });
-    
-    // Add sort indicator to current column
-    const columnMap = {
-        'Usuario': 4,
-        'Nombre': 0,
-        'Compañía': 2,
-        'Cargo': 3,
-        'Año Declaración': 1,
-        'Activos': 5,
-        'Pasivos': 6,
-        'Patrimonio': 7,
-        'Apalancamiento': 8,
-        'Endeudamiento': 9,
-        'Cant_Deudas': 10,
-        'BancoSaldo': 11,
-        'Cant_Bancos': 12,
-        'Bienes': 13,
-        'Cant_Bienes': 14,
-        'Inversiones': 15,
-        'Cant_Inversiones': 16,
-        'Ingresos': 17,
-        'Cant_Ingresos': 18,
-        'Activos Var. Abs.': 19,
-        'Pasivos Var. Abs.': 20,
-        'Patrimonio Var. Abs.': 21,
-        'Apalancamiento Var. Abs.': 22,
-        'Endeudamiento Var. Abs.': 23,
-        'BancoSaldo Var. Abs.': 24,
-        'Bienes Var. Abs.': 25,
-        'Inversiones Var. Abs.': 26,
-        'Ingresos Var. Abs.': 27,
-        'Activos Var. Rel.': 28,
-        'Pasivos Var. Rel.': 29,
-        'Patrimonio Var. Rel.': 30,
-        'Apalancamiento Var. Rel.': 31,
-        'Endeudamiento Var. Rel.': 32,
-        'BancoSaldo Var. Rel.': 33,
-        'Bienes Var. Rel.': 34,
-        'Inversiones Var. Rel.': 35,
-        'Ingresos Var. Rel.': 36
-    };
-    
-    const columnIndex = columnMap[columnName];
-    if (columnIndex !== undefined) {
-        const header = document.querySelector(`#results th:nth-child(${columnIndex + 1})`);
-        if (header) {
-            header.classList.add(`sorted-${sortDirection}`);
-            
-            // Update sort icon
-            const icon = header.querySelector('.sort-icon');
-            if (icon) {
-                icon.textContent = sortDirection === 'asc' ? '↑' : '↓';
-            }
-        }
-    }
-    
-    // Open filter dialog with column pre-selected
-    document.getElementById('column').value = columnName;
-    document.getElementById('column').classList.add('highlighted');
-    document.getElementById('value1').focus();
-    
-    // Highlight the column
-    highlightColumn(columnName);
-    currentFilterColumn = columnName;
-    lastSelectedColumn = columnName;
-    
-    // Auto-sort when clicking 
-    sortTable(columnName, sortDirection);
 }
 
 function sortTable(columnName, direction) {
@@ -2974,9 +2996,241 @@ function formatNumber(num) {
     return new Intl.NumberFormat('es-CO').format(num);
 }
 
-// Close modal function
+function quickFilter(columnName) {
+    // First, show the column stats in a modal
+    showColumnStats(columnName);
+    
+    // Then proceed with the existing sorting functionality
+    if (currentSortColumn === columnName) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSortColumn = columnName;
+        sortDirection = 'asc';
+    }
+    
+    document.querySelectorAll('#results th').forEach(th => {
+        th.classList.remove('sorted-asc', 'sorted-desc');
+    });
+    
+    const columnMap = {
+        'Usuario': 4,
+        'Nombre': 0,
+        'Compañía': 2,
+        'Cargo': 3,
+        'Año Declaración': 1,
+        'Activos': 5,
+        'Pasivos': 6,
+        'Patrimonio': 7,
+        'Apalancamiento': 8,
+        'Endeudamiento': 9,
+        'Cant_Deudas': 10,
+        'BancoSaldo': 11,
+        'Cant_Bancos': 12,
+        'Bienes': 13,
+        'Cant_Bienes': 14,
+        'Inversiones': 15,
+        'Cant_Inversiones': 16,
+        'Ingresos': 17,
+        'Cant_Ingresos': 18,
+        'Activos Var. Abs.': 19,
+        'Pasivos Var. Abs.': 20,
+        'Patrimonio Var. Abs.': 21,
+        'Apalancamiento Var. Abs.': 22,
+        'Endeudamiento Var. Abs.': 23,
+        'BancoSaldo Var. Abs.': 24,
+        'Bienes Var. Abs.': 25,
+        'Inversiones Var. Abs.': 26,
+        'Ingresos Var. Abs.': 27,
+        'Activos Var. Rel.': 28,
+        'Pasivos Var. Rel.': 29,
+        'Patrimonio Var. Rel.': 30,
+        'Apalancamiento Var. Rel.': 31,
+        'Endeudamiento Var. Rel.': 32,
+        'BancoSaldo Var. Rel.': 33,
+        'Bienes Var. Rel.': 34,
+        'Inversiones Var. Rel.': 35,
+        'Ingresos Var. Rel.': 36
+    };
+    
+    const columnIndex = columnMap[columnName];
+    if (columnIndex !== undefined) {
+        const header = document.querySelector(`#results th:nth-child(${columnIndex + 1})`);
+        if (header) {
+            header.classList.add(`sorted-${sortDirection}`);
+            
+            const icon = header.querySelector('.sort-icon');
+            if (icon) {
+                icon.textContent = sortDirection === 'asc' ? '↑' : '↓';
+            }
+        }
+    }
+    
+    document.getElementById('column').value = columnName;
+    document.getElementById('column').classList.add('highlighted');
+    document.getElementById('value1').focus();
+    
+    highlightColumn(columnName);
+    currentFilterColumn = columnName;
+    lastSelectedColumn = columnName;
+    
+    sortTable(columnName, sortDirection);
+}
+
+function showColumnStats(columnName) {
+    // Collect all values for this column
+    const values = allData.map(item => item[columnName]);
+    
+    // Calculate basic statistics
+    const numericValues = values
+        .map(v => parseFloat(v))
+        .filter(v => !isNaN(v));
+        
+    const isNumeric = numericValues.length > 0;
+    
+    let stats = {
+        count: values.length,
+        uniqueCount: new Set(values.filter(v => v !== undefined && v !== null)).size,
+        min: null,
+        max: null,
+        avg: null,
+        commonValues: []
+    };
+    
+    if (isNumeric) {
+        stats.min = Math.min(...numericValues);
+        stats.max = Math.max(...numericValues);
+        stats.avg = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
+    }
+    
+    // Find most common values (top 5)
+    const valueCounts = {};
+    values.forEach(v => {
+        if (v !== undefined && v !== null) {
+            valueCounts[v] = (valueCounts[v] || 0) + 1;
+        }
+    });
+    
+    stats.commonValues = Object.entries(valueCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([value, count]) => ({ value, count }));
+    
+    // Format numbers for display
+    const formatNumber = (num) => {
+        if (num === null || num === undefined) return 'N/A';
+        if (Math.abs(num) >= 1000000) {
+            return '$' + (num / 1000000).toFixed(2) + 'M';
+        }
+        return new Intl.NumberFormat('es-CO').format(num);
+    };
+    
+    // Create modal HTML
+    const modalHTML = `
+        <div id="columnStatsModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Estadísticas de Columna: ${columnName}</h2>
+                    <button onclick="closeModal()" class="close-button">×</button>
+                </div>
+                <div class="modal-body">
+                    <div class="stats-grid">
+                        <div class="stat-item">
+                            <strong>Total de valores:</strong>
+                            <span>${stats.count}</span>
+                        </div>
+                        <div class="stat-item">
+                            <strong>Valores únicos:</strong>
+                            <span>${stats.uniqueCount}</span>
+                        </div>
+                        ${isNumeric ? `
+                        <div class="stat-item">
+                            <strong>Mínimo:</strong>
+                            <span>${formatNumber(stats.min)}</span>
+                        </div>
+                        <div class="stat-item">
+                            <strong>Máximo:</strong>
+                            <span>${formatNumber(stats.max)}</span>
+                        </div>
+                        <div class="stat-item">
+                            <strong>Promedio:</strong>
+                            <span>${formatNumber(stats.avg)}</span>
+                        </div>
+                        ` : ''}
+                    </div>
+                    
+                    <div class="common-values-section">
+                        <h3>Valores más comunes</h3>
+                        <div class="common-values-grid">
+                            ${stats.commonValues.map(item => `
+                                <div class="common-value-item">
+                                    <span class="value">${item.value}</span>
+                                    <span class="count">${item.count} (${Math.round((item.count / stats.count) * 100)}%)</span>
+                                    <button onclick="applyCommonValueFilter('${columnName}', '${item.value}')" 
+                                            class="apply-filter-btn">
+                                        Filtrar
+                                    </button>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                    
+                    <div class="quick-filter-actions">
+                        <button onclick="applyMinMaxFilter('${columnName}', 'min')" class="action-btn">
+                            Filtrar por mínimo
+                        </button>
+                        <button onclick="applyMinMaxFilter('${columnName}', 'max')" class="action-btn">
+                            Filtrar por máximo
+                        </button>
+                        <button onclick="applyAvgFilter('${columnName}')" class="action-btn" ${!isNumeric ? 'disabled' : ''}>
+                            Filtrar por promedio
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function applyCommonValueFilter(columnName, value) {
+    // Add filter for this value
+    document.getElementById('column').value = columnName;
+    document.getElementById('operator').value = '=';
+    document.getElementById('value1').value = value;
+    addFilter();
+    closeModal();
+}
+
+function applyMinMaxFilter(columnName, type) {
+    const columnValues = allData.map(item => parseFloat(item[columnName])).filter(v => !isNaN(v));
+    if (columnValues.length === 0) return;
+    
+    const value = type === 'min' ? Math.min(...columnValues) : Math.max(...columnValues);
+    
+    document.getElementById('column').value = columnName;
+    document.getElementById('operator').value = '=';
+    document.getElementById('value1').value = value;
+    addFilter();
+    closeModal();
+}
+
+function applyAvgFilter(columnName) {
+    const columnValues = allData.map(item => parseFloat(item[columnName])).filter(v => !isNaN(v));
+    if (columnValues.length === 0) return;
+    
+    const avg = columnValues.reduce((a, b) => a + b, 0) / columnValues.length;
+    
+    document.getElementById('column').value = columnName;
+    document.getElementById('operator').value = '>=';
+    document.getElementById('value1').value = avg.toFixed(2);
+    addFilter();
+    closeModal();
+}
+
 function closeModal() {
-    const modal = document.getElementById('detailModal');
+    const modal = document.getElementById('columnStatsModal') || document.getElementById('detailModal');
     if (modal) modal.remove();
 }
 
