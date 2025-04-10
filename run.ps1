@@ -1440,6 +1440,7 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
         <input type="text" id="value2" placeholder="y" style="display: none;">
         
         <button onclick="addFilter()">Agregar Filtro</button>
+        <button onclick="clearFilters()" style="background-color: #dc3545; color: white;">Limpiar Filtros</button>
         
         <div style="margin-left: auto; background-color:rgb(0, 176, 15);">
             <select id="dataSource" aria-label="Seleccionar fuente de datos" title="Fuente de datos">
@@ -2232,14 +2233,493 @@ font-size: 0.9rem;
 Write-Host "🏗️ Creating Javascript" -ForegroundColor $YELLOW
     #javascript
 Set-Content -Path "static/script.js" -Value @'
-// Configuración global
-const CONFIG = {
-    valuesPerPage: 50,
-    dataSources: {
-        trends: 'src/data.json',
-        fk1: 'src/fk1Data.json'
-    },
-    columnMap: {
+// Global variables
+let allData = [];
+let filteredData = [];
+let lastSelectedColumn = '';
+let currentFilterColumn = '';
+let currentSortColumn = '';
+let sortDirection = 'asc';
+let processingData = false;
+const filters = [];
+let currentDataSource = 'src/data.json';
+let selectedFile = null;
+
+// DOM elements
+const operatorSelect = document.getElementById('operator');
+const value2Input = document.getElementById('value2');
+
+// Global variables for values pagination
+let currentValuesPage = 1;
+const valuesPerPage = 50;
+let currentValuesSearch = '';
+let currentValuesColumn = '';
+
+// Initializing the application
+document.addEventListener('DOMContentLoaded', () => {
+    loadData();
+    setupEventListeners();
+});
+
+function renderValuesPage() {
+    const container = document.getElementById('values-container');
+    if (!container) return;
+    
+    const columnValues = allData.map(item => item[currentValuesColumn]);
+    const valueCounts = {};
+    columnValues.forEach(v => {
+        if (v !== undefined && v !== null) {
+            const val = typeof v === 'string' ? v.trim() : v;
+            valueCounts[val] = (valueCounts[val] || 0) + 1;
+        }
+    });
+    
+    let allValues = Object.keys(valueCounts)
+        .sort((a, b) => {
+            const isNumeric = !isNaN(parseFloat(a)) && !isNaN(parseFloat(b));
+            if (isNumeric) {
+                return parseFloat(a) - parseFloat(b);
+            }
+            return a.localeCompare(b);
+        });
+    
+    // Apply search filter
+    if (currentValuesSearch) {
+        const searchTerm = currentValuesSearch.toLowerCase();
+        allValues = allValues.filter(v => 
+            String(v).toLowerCase().includes(searchTerm)
+        );
+    }
+    
+    const totalValues = allValues.length;
+    const totalPages = Math.ceil(totalValues / valuesPerPage);
+    const startIdx = (currentValuesPage - 1) * valuesPerPage;
+    const endIdx = Math.min(startIdx + valuesPerPage, totalValues);
+    const pageValues = allValues.slice(startIdx, endIdx);
+    
+    // Update UI
+    container.innerHTML = pageValues.map(value => `
+        <div class="value-item">
+            <span class="value">${formatValueForDisplay(value)}</span>
+            <span class="count">${valueCounts[value]} (${Math.round((valueCounts[value] / columnValues.length) * 100)}%)</span>
+            <button onclick="applyCommonValueFilter('${currentValuesColumn}', '${value.replace(/'/g, "\\'")}')" 
+                    class="apply-filter-btn">
+                Filtrar
+            </button>
+        </div>
+    `).join('');
+    
+    document.getElementById('values-showing').textContent = `${startIdx + 1}-${endIdx}`;
+    document.getElementById('values-page-info').textContent = `Página ${currentValuesPage} de ${totalPages}`;
+    document.getElementById('values-prev').disabled = currentValuesPage <= 1;
+    document.getElementById('values-next').disabled = currentValuesPage >= totalPages;
+}
+
+function formatValueForDisplay(value) {
+    if (value === null || value === undefined) return 'N/A';
+    if (typeof value === 'string') return value;
+    if (Math.abs(value) >= 1000000) {
+        return '$' + (value / 1000000).toFixed(2) + 'M';
+    }
+    return new Intl.NumberFormat('es-CO').format(value);
+}
+
+function searchValues(columnName) {
+    currentValuesSearch = document.getElementById('values-search-input').value;
+    currentValuesPage = 1;
+    currentValuesColumn = columnName;
+    renderValuesPage();
+}
+
+function navigateValuesPage(direction) {
+    currentValuesPage += direction;
+    renderValuesPage();
+}
+
+function switchTab(tabId, button) {
+    // Hide all tab contents
+    document.querySelectorAll('.tab-content').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    
+    // Deactivate all tab buttons
+    document.querySelectorAll('.modal-tabs .tab-btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    
+    // Activate selected tab
+    document.getElementById(`${tabId}-tab`).classList.add('active');
+    button.classList.add('active');
+    
+    // If switching to values tab and not yet loaded
+    if (tabId === 'values' && document.getElementById('values-container').innerHTML === '') {
+        renderValuesPage();
+    }
+}
+
+
+// Load JSON data
+async function loadData() {
+    try {
+        const timestamp = new Date().getTime();
+        document.querySelector('#results tbody').innerHTML = `
+            <tr>
+                <td colspan="35" class="loading">Cargando datos...</td>
+            </tr>
+        `;
+
+        const response = await fetch(`${currentDataSource}?t=${timestamp}`);
+        if (!response.ok) throw new Error(`Error al cargar ${currentDataSource}`);
+        
+        allData = await response.json();
+        filteredData = [...allData];
+        renderTable();
+        
+    } catch (error) {
+        console.error('Error:', error);
+        document.querySelector('#results tbody').innerHTML = `
+            <tr>
+                <td colspan="35">Carga el archivo excel para generar el análisis de datos</td>
+            </tr>
+        `;
+    }
+}
+
+    function togglePassword(inputId) {
+        const input = document.getElementById(inputId);
+        const toggle = input.nextElementSibling;
+        
+        if (input.type === 'password') {
+            input.type = 'text';
+            toggle.textContent = '🙈';
+        } else {
+            input.type = 'password';
+            toggle.textContent = '👁️';
+        }
+    }
+
+    function showPasswordError(message) {
+        const errorElement = document.getElementById('passwordError');
+        errorElement.textContent = message;
+        
+        // Add shake animation to password inputs
+        document.querySelectorAll('.password-input').forEach(input => {
+            input.classList.add('shake');
+            setTimeout(() => input.classList.remove('shake'), 600);
+        });
+        
+        // Highlight inputs in red
+        document.querySelectorAll('.password-input').forEach(input => {
+            input.style.borderColor = '#dc3545';
+            setTimeout(() => {
+                input.style.borderColor = input === document.activeElement ? '#0b00a2' : '#ddd';
+            }, 2000);
+        });
+    }
+
+    function clearPasswordError() {
+        document.getElementById('passwordError').textContent = '';
+        document.querySelectorAll('.password-input').forEach(input => {
+            input.style.borderColor = input === document.activeElement ? '#0b00a2' : '#ddd';
+        });
+    }
+
+    // Update your analyzeButton click handler to handle password errors
+    document.getElementById('analyzeButton').addEventListener('click', async function() {
+        if (!selectedFile) {
+            alert('Por favor seleccione un archivo primero');
+            return;
+        }
+        
+        clearPasswordError();
+        
+        const openPassword = document.getElementById('excelOpenPassword').value;
+        const modifyPassword = document.getElementById('excelModifyPassword').value;
+        const statusElement = document.getElementById('fileUploadStatus');
+        const loadingBarContainer = document.getElementById('loadingBarContainer');
+        const loadingBar = document.getElementById('loadingBar');
+        
+        try {
+            loadingBarContainer.style.display = 'block';
+            loadingBar.style.width = '10%';
+            statusElement.textContent = 'Preparando análisis...';
+            statusElement.style.color = '#0b00a2';
+            
+            const result = await processExcelFile(selectedFile, openPassword, modifyPassword);
+            
+            loadingBar.style.width = '100%';
+            statusElement.textContent = 'Finalizando...';
+            
+            if (result.success) {
+                statusElement.textContent = 'Análisis completado correctamente! Los datos se han actualizado.';
+                statusElement.style.color = 'green';
+                
+                document.getElementById('excelUpload').value = '';
+                document.getElementById('excelOpenPassword').value = '';
+                document.getElementById('excelModifyPassword').value = '';
+                selectedFile = null;
+                
+                setTimeout(() => {
+                    loadingBarContainer.style.display = 'none';
+                    loadingBar.style.width = '0%';
+                }, 1000);
+                
+                await loadData();
+            } else {
+                throw new Error(result.message || 'Error desconocido al procesar el archivo');
+            }
+        } catch (error) {
+            console.error('Error details:', error);
+            loadingBarContainer.style.display = 'none';
+            loadingBar.style.width = '0%';
+            
+            // This is where we simplify the error message
+            if (error.message.toLowerCase().includes('intenta de nuevo') || 
+                error.message.toLowerCase().includes('password') || 
+                error.message.toLowerCase().includes('contraseña')) {
+                showPasswordError('Verifica tu contraseña');
+                statusElement.textContent = 'Intenta de nuevo';
+            } else {
+                statusElement.textContent = `Error: ${error.message}`;
+            }
+            statusElement.style.color = 'red';
+        }
+    });
+    
+    // Add this new function to handle file processing
+    async function processExcelFile(file, openPassword, modifyPassword) {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (openPassword) formData.append('openPassword', openPassword);
+        if (modifyPassword) formData.append('modifyPassword', modifyPassword);
+    
+        try {
+            const response = await fetch('http://localhost:8000/upload', {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'Accept': 'application/json'
+                }
+            });
+    
+            if (!response.ok) {
+                const errorData = await response.json();
+                if (errorData.message && errorData.message.toLowerCase().includes('contraseña')) {
+                    throw new Error('Intenta de nuevo');
+                }
+                throw new Error(errorData.message || 'Error desconocido');
+            }
+    
+            return await response.json();
+        } catch (error) {
+            console.error("Fetch error:", error);
+            throw error; // This will be caught by the calling function
+        }
+    }
+    
+
+function changeDataSource() {
+    const dataSourceSelect = document.getElementById('dataSource');
+    currentDataSource = dataSourceSelect.value;
+    
+    // Clear existing filters
+    filters.length = 0;
+    renderFilters();
+    
+    // Reset sort
+    currentSortColumn = '';
+    sortDirection = 'asc';
+    
+    // Reload data
+    loadData();
+    
+    // Clear any highlights
+    document.querySelectorAll('.highlighted-column').forEach(el => {
+        el.classList.remove('highlighted-column');
+    });
+    document.getElementById('column').classList.remove('highlighted');
+    currentFilterColumn = '';
+    lastSelectedColumn = '';
+    
+    // Reset column dropdown
+    document.getElementById('column').selectedIndex = 0;
+}
+
+// Set up event listeners
+function setupEventListeners() {
+    operatorSelect.addEventListener('change', toggleValue2Input);
+    
+    document.getElementById('column').addEventListener('change', function() {
+        currentFilterColumn = this.value;
+        if (this.value) {
+            this.classList.add('highlighted');
+        } else {
+            this.classList.remove('highlighted');
+        }
+        
+        // Auto-focus the value input for quick filtering
+        if (this.value && lastSelectedColumn !== this.value) {
+            document.getElementById('value1').focus();
+        }
+        lastSelectedColumn = this.value;
+    });
+    // listener to excelupload
+    document.getElementById('excelUpload').addEventListener('change', function(e) {
+        const statusElement = document.getElementById('fileUploadStatus');
+        const passwordContainer = document.getElementById('passwordContainer');
+        
+        if (this.files.length > 0) {
+            selectedFile = this.files[0];
+            statusElement.textContent = `Archivo seleccionado: ${selectedFile.name}`;
+            statusElement.style.color = '#0b00a2';
+            passwordContainer.style.display = 'block'; // Show both password fields
+        } else {
+            selectedFile = null;
+            statusElement.textContent = '';
+            passwordContainer.style.display = 'none'; // Hide both password fields
+        }
+    });
+}
+
+// excel upload fucntion
+async function handleFileUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Show loading state
+    processingData = true;
+    document.querySelector('#results tbody').innerHTML = `
+        <tr>
+            <td colspan="37" class="loading">Procesando archivo Excel, por favor espere...</td>
+        </tr>
+    `;
+
+    try {
+        const formData = new FormData();
+        formData.append('file', file);
+
+        const response = await fetch('/upload', {
+            method: 'POST',
+            body: formData
+        });
+
+        if (!response.ok) {
+            throw new Error('Error en el análisis del archivo');
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Reload the data after processing
+            await loadData();
+            alert('Archivo procesado correctamente. Los datos han sido actualizados.');
+        } else {
+            throw new Error(result.message || 'Error desconocido al procesar el archivo');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        document.querySelector('#results tbody').innerHTML = `
+            <tr>
+                <td colspan="37">Error al procesar el archivo: ${error.message}</td>
+            </tr>
+        `;
+    } finally {
+        processingData = false;
+        // Reset the file input
+        event.target.value = '';
+    }
+}
+
+// Toggle second value input for 'between' operator
+function toggleValue2Input() {
+    value2Input.style.display = operatorSelect.value === 'between' ? 'inline-block' : 'none';
+}
+
+// Add a new filter
+function addFilter() {
+    const column = document.getElementById('column').value;
+    const operator = operatorSelect.value;
+    const value1 = document.getElementById('value1').value.trim();
+    let value2 = '';
+    
+    if (!column || !operator || !value1) {
+        alert('Por favor complete todos los campos del filtro');
+        return;
+    }
+    
+    if (operator === 'between') {
+        value2 = document.getElementById('value2').value.trim();
+        if (!value2) {
+            alert('Por favor complete el segundo valor para el filtro "Entre"');
+            return;
+        }
+    }
+    
+    // Check if we should use string comparison instead of numeric
+    const isNumericComparison = ['>', '<', '=', '>=', '<=', 'between'].includes(operator) && 
+                               !isNaN(parseFloat(value1)) && 
+                               (operator !== 'between' || !isNaN(parseFloat(value2)));
+    
+    filters.push({ 
+        column, 
+        operator, 
+        value1, 
+        value2,
+        isNumericComparison  // Add this flag to the filter
+    });
+    
+    renderFilters();
+    applyFilters();
+    
+    // Highlight the column in the table
+    highlightColumn(column);
+    
+    // Keep the column selected in the dropdown
+    lastSelectedColumn = column;
+    currentFilterColumn = column;
+}
+
+function sortTable(columnName, direction) {
+    filteredData.sort((a, b) => {
+        let valA = a[columnName];
+        let valB = b[columnName];
+        
+        // Handle numeric values
+        if (!isNaN(parseFloat(valA)) && !isNaN(parseFloat(valB))) {
+            valA = parseFloat(valA);
+            valB = parseFloat(valB);
+            return direction === 'asc' ? valA - valB : valB - valA;
+        }
+        
+        // Handle string values
+        if (typeof valA === 'string' && typeof valB === 'string') {
+            return direction === 'asc' 
+                ? valA.localeCompare(valB) 
+                : valB.localeCompare(valA);
+        }
+        
+        return 0;
+    });
+    
+    renderTable();
+    
+    // Re-apply column highlight if there's a current filter column
+    if (currentFilterColumn) {
+        highlightColumn(currentFilterColumn);
+    }
+}
+
+// Highlight table column
+function highlightColumn(columnName) {
+    // Remove any existing highlights
+    const headers = document.querySelectorAll('#results th');
+    const cells = document.querySelectorAll('#results td');
+    
+    headers.forEach(header => header.classList.remove('highlighted-column'));
+    cells.forEach(cell => cell.classList.remove('highlighted-column'));
+    
+    // Find the column index
+    const columnMap = {
         'Usuario': 4,
         'Nombre': 0,
         'Compañía': 2,
@@ -2277,1108 +2757,883 @@ const CONFIG = {
         'Bienes Var. Rel.': 34,
         'Inversiones Var. Rel.': 35,
         'Ingresos Var. Rel.': 36
-    }
-};
-
-// Estado de la aplicación
-const state = {
-    allData: [],
-    filteredData: [],
-    filters: [],
-    currentSortColumn: '',
-    sortDirection: 'asc',
-    processingData: false,
-    currentDataSource: CONFIG.dataSources.trends,
-    selectedFile: null,
-    currentValuesPage: 1,
-    currentValuesSearch: '',
-    currentValuesColumn: ''
-};
-
-// Cache de elementos DOM
-const DOM = {
-    operatorSelect: document.getElementById('operator'),
-    value2Input: document.getElementById('value2'),
-    columnSelect: document.getElementById('column'),
-    value1Input: document.getElementById('value1'),
-    filtersContainer: document.getElementById('filters'),
-    resultsTable: document.getElementById('results'),
-    resultsTbody: document.querySelector('#results tbody'),
-    tableScrollContainer: document.querySelector('.table-scroll-container'),
-    excelUpload: document.getElementById('excelUpload'),
-    fileUploadStatus: document.getElementById('fileUploadStatus'),
-    passwordContainer: document.getElementById('passwordContainer'),
-    analyzeButton: document.getElementById('analyzeButton'),
-    passwordError: document.getElementById('passwordError'),
-    loadingBarContainer: document.getElementById('loadingBarContainer'),
-    loadingBar: document.getElementById('loadingBar'),
-    dataSourceSelect: document.getElementById('dataSource')
-};
-
-// Utilidades
-const utils = {
-    formatNumber: (num) => {
-        if (num === undefined || num === null) return 'N/A';
-        if (Math.abs(num) >= 1000000) return `$${(num / 1000000).toFixed(2)}M`;
-        return new Intl.NumberFormat('es-CO').format(num);
-    },
-
-    formatPercentage: (num) => {
-        if (num === undefined || num === null) return 'N/A';
-        return `${num.toFixed(2)}%`;
-    },
-
-    getOperatorSymbol: (operator) => {
-        const symbols = {
-            '>': '>', '<': '<', '=': '=', '>=': '≥', '<=': '≤',
-            'between': 'entre', 'contains': 'contiene'
-        };
-        return symbols[operator] || operator;
-    },
-
-    parseNumericValue: (value) => {
-        if (value === undefined || value === null) return NaN;
-        if (typeof value === 'string') {
-            return parseFloat(value.replace('%', '').replace(/[^\d.-]/g, ''));
-        }
-        return parseFloat(value);
-    },
-
-    isNumeric: (value) => {
-        return !isNaN(utils.parseNumericValue(value));
-    }
-};
-
-// Manejadores de eventos
-const eventHandlers = {
-    setupEventListeners: () => {
-        DOM.operatorSelect.addEventListener('change', eventHandlers.toggleValue2Input);
-        
-        DOM.columnSelect.addEventListener('change', () => {
-            const column = DOM.columnSelect.value;
-            state.currentFilterColumn = column;
-            DOM.columnSelect.classList.toggle('highlighted', !!column);
-            
-            if (column && state.lastSelectedColumn !== column) {
-                DOM.value1Input.focus();
-            }
-            state.lastSelectedColumn = column;
-        });
-        
-        DOM.excelUpload.addEventListener('change', (e) => {
-            if (e.target.files.length > 0) {
-                state.selectedFile = e.target.files[0];
-                DOM.fileUploadStatus.textContent = `Archivo seleccionado: ${state.selectedFile.name}`;
-                DOM.fileUploadStatus.style.color = '#0b00a2';
-                DOM.passwordContainer.style.display = 'block';
-            } else {
-                state.selectedFile = null;
-                DOM.fileUploadStatus.textContent = '';
-                DOM.passwordContainer.style.display = 'none';
-            }
-        });
-        
-        DOM.analyzeButton.addEventListener('click', eventHandlers.handleAnalyzeClick);
-    },
-
-    toggleValue2Input: () => {
-        DOM.value2Input.style.display = DOM.operatorSelect.value === 'between' ? 
-            'inline-block' : 'none';
-    },
-
-    handleAnalyzeClick: async () => {
-        if (!state.selectedFile) {
-            alert('Por favor seleccione un archivo primero');
-            return;
-        }
-        
-        eventHandlers.clearPasswordError();
-        
-        const openPassword = document.getElementById('excelOpenPassword').value;
-        const modifyPassword = document.getElementById('excelModifyPassword').value;
-        
-        try {
-            DOM.loadingBarContainer.style.display = 'block';
-            DOM.loadingBar.style.width = '10%';
-            DOM.fileUploadStatus.textContent = 'Preparando análisis...';
-            DOM.fileUploadStatus.style.color = '#0b00a2';
-            
-            const result = await dataHandlers.processExcelFile(state.selectedFile, openPassword, modifyPassword);
-            
-            DOM.loadingBar.style.width = '100%';
-            DOM.fileUploadStatus.textContent = 'Finalizando...';
-            
-            if (result.success) {
-                DOM.fileUploadStatus.textContent = 'Análisis completado correctamente! Los datos se han actualizado.';
-                DOM.fileUploadStatus.style.color = 'green';
-                
-                DOM.excelUpload.value = '';
-                document.getElementById('excelOpenPassword').value = '';
-                document.getElementById('excelModifyPassword').value = '';
-                state.selectedFile = null;
-                
-                setTimeout(() => {
-                    DOM.loadingBarContainer.style.display = 'none';
-                    DOM.loadingBar.style.width = '0%';
-                }, 1000);
-                
-                await dataHandlers.loadData();
-            } else {
-                throw new Error(result.message || 'Error desconocido al procesar el archivo');
-            }
-        } catch (error) {
-            console.error('Error details:', error);
-            DOM.loadingBarContainer.style.display = 'none';
-            DOM.loadingBar.style.width = '0%';
-            
-            if (error.message.toLowerCase().includes('intenta de nuevo') || 
-                error.message.toLowerCase().includes('password') || 
-                error.message.toLowerCase().includes('contraseña')) {
-                eventHandlers.showPasswordError('Verifica tu contraseña');
-                DOM.fileUploadStatus.textContent = 'Intenta de nuevo';
-            } else {
-                DOM.fileUploadStatus.textContent = `Error: ${error.message}`;
-            }
-            DOM.fileUploadStatus.style.color = 'red';
-        }
-    },
-
-    showPasswordError: (message) => {
-        DOM.passwordError.textContent = message;
-        
-        document.querySelectorAll('.password-input').forEach(input => {
-            input.classList.add('shake');
-            setTimeout(() => input.classList.remove('shake'), 600);
-            input.style.borderColor = '#dc3545';
-            setTimeout(() => {
-                input.style.borderColor = input === document.activeElement ? '#0b00a2' : '#ddd';
-            }, 2000);
-        });
-    },
-
-    clearPasswordError: () => {
-        DOM.passwordError.textContent = '';
-        document.querySelectorAll('.password-input').forEach(input => {
-            input.style.borderColor = input === document.activeElement ? '#0b00a2' : '#ddd';
-        });
-    }
-};
-
-// Manejadores de datos
-const dataHandlers = {
-    loadData: async () => {
-        try {
-            const timestamp = new Date().getTime();
-            DOM.resultsTbody.innerHTML = `
-                <tr>
-                    <td colspan="35" class="loading">Cargando datos...</td>
-                </tr>
-            `;
-
-            const response = await fetch(`${state.currentDataSource}?t=${timestamp}`);
-            if (!response.ok) throw new Error(`Error al cargar ${state.currentDataSource}`);
-            
-            state.allData = await response.json();
-            state.filteredData = [...state.allData];
-            tableHandlers.renderTable();
-            
-        } catch (error) {
-            console.error('Error:', error);
-            DOM.resultsTbody.innerHTML = `
-                <tr>
-                    <td colspan="35">Carga el archivo excel para generar el análisis de datos</td>
-                </tr>
-            `;
-        }
-    },
-
-    processExcelFile: async (file, openPassword, modifyPassword) => {
-        const formData = new FormData();
-        formData.append('file', file);
-        if (openPassword) formData.append('openPassword', openPassword);
-        if (modifyPassword) formData.append('modifyPassword', modifyPassword);
+    };
     
-        try {
-            const response = await fetch('http://localhost:8000/upload', {
-                method: 'POST',
-                body: formData,
-                headers: {
-                    'Accept': 'application/json'
-                }
-            });
+    const columnIndex = columnMap[columnName];
+    if (columnIndex === undefined) return;
     
-            if (!response.ok) {
-                const errorData = await response.json();
-                if (errorData.message && errorData.message.toLowerCase().includes('contraseña')) {
-                    throw new Error('Intenta de nuevo');
-                }
-                throw new Error(errorData.message || 'Error desconocido');
-            }
+    // Highlight header
+    if (headers[columnIndex]) {
+        headers[columnIndex].classList.add('highlighted-column');
+    }
     
-            return await response.json();
-        } catch (error) {
-            console.error("Fetch error:", error);
-            throw error;
-        }
-    },
+    // Highlight cells
+    document.querySelectorAll(`#results tr td:nth-child(${columnIndex + 1})`).forEach(cell => {
+        cell.classList.add('highlighted-column');
+    });
+}
 
-    changeDataSource: () => {
-        state.currentDataSource = DOM.dataSourceSelect.value;
-        state.filters = [];
-        filterHandlers.renderFilters();
-        state.currentSortColumn = '';
-        state.sortDirection = 'asc';
-        dataHandlers.loadData();
-        
+function removeFilter(index) {
+    // Remove the filter at the specified index
+    filters.splice(index, 1);
+    
+    // Re-render the remaining filters
+    renderFilters();
+    
+    // Re-apply the remaining filters
+    applyFilters();
+    
+    // If no filters remain, clear the highlights
+    if (filters.length === 0) {
         document.querySelectorAll('.highlighted-column').forEach(el => {
             el.classList.remove('highlighted-column');
         });
-        DOM.columnSelect.classList.remove('highlighted');
-        state.currentFilterColumn = '';
-        state.lastSelectedColumn = '';
-        DOM.columnSelect.selectedIndex = 0;
+        document.getElementById('column').classList.remove('highlighted');
+        currentFilterColumn = '';
+        lastSelectedColumn = '';
     }
-};
+}
 
-// Manejadores de filtros
-const filterHandlers = {
-    addFilter: () => {
-        const column = DOM.columnSelect.value;
-        const operator = DOM.operatorSelect.value;
-        const value1 = DOM.value1Input.value.trim();
-        let value2 = '';
-        
-        if (!column || !operator || !value1) {
-            alert('Por favor complete todos los campos del filtro');
-            return;
-        }
-        
-        if (operator === 'between') {
-            value2 = DOM.value2Input.value.trim();
-            if (!value2) {
-                alert('Por favor complete el segundo valor para el filtro "Entre"');
-                return;
-            }
-        }
-        
-        state.filters.push({ column, operator, value1, value2 });
-        filterHandlers.renderFilters();
-        tableHandlers.highlightColumn(column);
-        state.lastSelectedColumn = column;
-        state.currentFilterColumn = column;
-        filterHandlers.applyFilters();
-    },
+// Render active filters
+function renderFilters() {
+    const filtersContainer = document.getElementById('filters');
+    filtersContainer.innerHTML = filters.map((filter, index) => `
+        <div class="filter-tag">
+            ${filter.column} ${getOperatorSymbol(filter.operator)} ${filter.value1}
+            ${filter.operator === 'between' ? ` y ${filter.value2}` : ''}
+            <button onclick="removeFilter(${index})">×</button>
+        </div>
+    `).join('');
+}
 
-    applyFilters: () => {
-        if (state.filters.length === 0) {
-            state.filteredData = [...state.allData];
-            tableHandlers.renderTable();
-            return;
-        }
-        
-        state.filteredData = state.allData.filter(item => {
-            return state.filters.every(filter => {
-                const itemValue = item[filter.column];
-                if (itemValue === undefined || itemValue === null) return false;
-                
-                const numericValue = utils.parseNumericValue(itemValue);
-                const filterValue1 = utils.parseNumericValue(filter.value1);
-                const filterValue2 = utils.parseNumericValue(filter.value2);
+// Get operator symbol for display
+function getOperatorSymbol(operator) {
+    const symbols = {
+        '>': '>',
+        '<': '<',
+        '=': '=',
+        '>=': '≥',
+        '<=': '≤',
+        'between': 'entre',
+        'contains': 'contiene'
+    };
+    return symbols[operator] || operator;
+}
+
+// Remove a filter
+function applyFilters() {
+    if (filters.length === 0) {
+        filteredData = [...allData];
+        renderTable();
+        return;
+    }
+    
+    filteredData = allData.filter(item => {
+        return filters.every(filter => {
+            const itemValue = item[filter.column];
+            if (itemValue === undefined || itemValue === null) return false;
+            
+            // Handle string comparison
+            if (!filter.isNumericComparison) {
+                const itemStr = String(itemValue).toLowerCase();
+                const filterStr = filter.value1.toLowerCase();
                 
                 switch (filter.operator) {
-                    case '>': return numericValue > filterValue1;
-                    case '<': return numericValue < filterValue1;
-                    case '=': return numericValue === filterValue1;
-                    case '>=': return numericValue >= filterValue1;
-                    case '<=': return numericValue <= filterValue1;
-                    case 'between': 
-                        return numericValue >= filterValue1 && numericValue <= filterValue2;
-                    case 'contains':
-                        return String(itemValue).toLowerCase().includes(filter.value1.toLowerCase());
-                    default: return true;
+                    case 'contains': 
+                        return itemStr.includes(filterStr);
+                    case '=':
+                        return itemStr === filterStr;
+                    default:
+                        return true;
                 }
-            });
+            }
+            
+            // Handle numeric comparison
+            let numericValue;
+            if (typeof itemValue === 'string' && itemValue.includes('%')) {
+                numericValue = parseFloat(itemValue.replace('%', ''));
+            } else {
+                numericValue = parseFloat(itemValue);
+            }
+            
+            const filterValue1 = parseFloat(filter.value1);
+            const filterValue2 = parseFloat(filter.value2);
+            
+            switch (filter.operator) {
+                case '>': return numericValue > filterValue1;
+                case '<': return numericValue < filterValue1;
+                case '=': return numericValue === filterValue1;
+                case '>=': return numericValue >= filterValue1;
+                case '<=': return numericValue <= filterValue1;
+                case 'between': 
+                    return numericValue >= filterValue1 && numericValue <= filterValue2;
+                case 'contains':
+                    return String(itemValue).toLowerCase().includes(filter.value1.toLowerCase());
+                default: return true;
+            }
         });
-        
-        tableHandlers.renderTable();
-        if (state.currentFilterColumn) {
-            tableHandlers.highlightColumn(state.currentFilterColumn);
-        }
-    },
-
-    renderFilters: () => {
-        DOM.filtersContainer.innerHTML = state.filters.map((filter, index) => `
-            <div class="filter-tag">
-                ${filter.column} ${utils.getOperatorSymbol(filter.operator)} ${filter.value1}
-                ${filter.operator === 'between' ? ` y ${filter.value2}` : ''}
-                <button onclick="filterHandlers.removeFilter(${index})">×</button>
-            </div>
-        `).join('');
-    },
-
-    removeFilter: (index) => {
-        state.filters.splice(index, 1);
-        filterHandlers.renderFilters();
-        filterHandlers.applyFilters();
-    },
-
-    applyPredeterminedFilter: (column, operator, value1) => {
-        const existingIndex = state.filters.findIndex(f => 
-            f.column === column && f.operator === operator && f.value1 === value1
-        );
-        
-        if (existingIndex === -1) {
-            state.filters.push({ column, operator, value1 });
-            const buttons = document.querySelectorAll('.filter-buttons button');
-            buttons.forEach(button => {
-                if (button.textContent.includes(column) && 
-                    button.textContent.includes(operator) &&
-                    button.textContent.includes(value1)) {
-                    button.classList.add('active');
-                }
-            });
-        } else {
-            state.filters.splice(existingIndex, 1);
-            const buttons = document.querySelectorAll('.filter-buttons button');
-            buttons.forEach(button => {
-                if (button.textContent.includes(column) && 
-                    button.textContent.includes(operator) &&
-                    button.textContent.includes(value1)) {
-                    button.classList.remove('active');
-                }
-            });
-        }
-        
-        filterHandlers.renderFilters();
-        filterHandlers.applyFilters();
-        tableHandlers.highlightColumn(column);
-    },
-
-    clearFilters: () => {
-        state.filters = [];
-        filterHandlers.renderFilters();
-        state.filteredData = [...state.allData];
-        tableHandlers.renderTable();
-        
-        document.querySelectorAll('.filter-buttons button').forEach(button => {
-            button.classList.remove('active');
-        });
-        
-        document.querySelectorAll('.highlighted-column').forEach(el => {
-            el.classList.remove('highlighted-column');
-        });
-        DOM.columnSelect.classList.remove('highlighted');
-        state.currentFilterColumn = '';
-        state.lastSelectedColumn = '';
+    });
+    
+    renderTable();
+    
+    // Re-apply column highlight if there's a current filter column
+    if (currentFilterColumn) {
+        highlightColumn(currentFilterColumn);
     }
-};
+}
 
-// Manejadores de tabla
-const tableHandlers = {
-    renderTable: () => {
-        if (state.filteredData.length === 0) {
-            DOM.resultsTbody.innerHTML = `
-                <tr>
-                    <td colspan="37">Generando datos desde el archivo excel</td>
-                </tr>
-            `;
-            return;
-        }
+// Handle predetermined filters
+function applyPredeterminedFilter(column, operator, value1) {
+    // Check if this filter already exists
+    const existingIndex = filters.findIndex(f => 
+        f.column === column && f.operator === operator && f.value1 === value1
+    );
+    
+    if (existingIndex === -1) {
+        // Add new filter
+        filters.push({ column, operator, value1 });
         
-        DOM.resultsTbody.innerHTML = state.filteredData.map(item => {
-            const formatCell = (value, isPercentage = false) => {
-                if (value === undefined || value === null || value === '') return '';
-                
-                const cleanValue = String(value).replace(/[📈📉➡️]/g, '').trim();
-                const numValue = utils.parseNumericValue(cleanValue);
-                if (isNaN(numValue)) return value;
-                
-                let formattedValue;
-                if (isPercentage) {
-                    formattedValue = numValue.toFixed(2) + '%';
-                } else if (Math.abs(numValue) >= 1000000) {
-                    formattedValue = '$' + (numValue / 1000000).toFixed(2) + 'M';
-                } else {
-                    formattedValue = new Intl.NumberFormat('es-CO').format(numValue);
-                }
-                
-                const color = numValue < 0 ? 'color: #dc3545;' : 'color: #000;';
-                return `<span style="${color}">${formattedValue}</span>`;
-            };
-            
-            return `
-                <tr>
-                    <td style="position: sticky; left: 0; background-color: white; z-index: 2;">${item.Nombre || ''}</td>
-                    <td style="position: sticky; left: 100px; background-color: white; z-index: 2;">${item['Año Declaración'] || ''}</td>
-                    <td style="position: sticky; left: 150px; background-color: white; z-index: 2;">${item['Compañía'] || ''}</td>
-                    <td style="position: sticky; left: 250px; background-color: white; z-index: 2;">${item.Cargo || ''}</td>
-                    <td>${item.Usuario || ''}</td>
-                    <td>${formatCell(item.Activos)}</td>
-                    <td>${formatCell(item.Pasivos)}</td>
-                    <td>${formatCell(item.Patrimonio)}</td>
-                    <td>${formatCell(item.Apalancamiento, true)}</td>
-                    <td>${formatCell(item.Endeudamiento, true)}</td>
-                    <td>${formatCell(item['Cant_Deudas'])}</td>
-                    <td>${formatCell(item.BancoSaldo)}</td>
-                    <td>${formatCell(item.Cant_Bancos)}</td>
-                    <td>${formatCell(item.Bienes)}</td>
-                    <td>${formatCell(item.Cant_Bienes)}</td>
-                    <td>${formatCell(item.Inversiones)}</td>
-                    <td>${formatCell(item.Cant_Inversiones)}</td>
-                    <td>${formatCell(item.Ingresos)}</td>
-                    <td>${formatCell(item.Cant_Ingresos)}</td>
-                    <td>${formatCell(item['Activos Var. Abs.'])}</td>
-                    <td>${formatCell(item['Pasivos Var. Abs.'])}</td>
-                    <td>${formatCell(item['Patrimonio Var. Abs.'])}</td>
-                    <td>${formatCell(item['Apalancamiento Var. Abs.'], true)}</td>
-                    <td>${formatCell(item['Endeudamiento Var. Abs.'], true)}</td>
-                    <td>${formatCell(item['BancoSaldo Var. Abs.'])}</td>
-                    <td>${formatCell(item['Bienes Var. Abs.'])}</td>
-                    <td>${formatCell(item['Inversiones Var. Abs.'])}</td>
-                    <td>${formatCell(item['Ingresos Var. Abs.'])}</td>
-                    <td>${formatCell(item['Activos Var. Rel.'], true)}</td>
-                    <td>${formatCell(item['Pasivos Var. Rel.'], true)}</td>
-                    <td>${formatCell(item['Patrimonio Var. Rel.'], true)}</td>
-                    <td>${formatCell(item['Apalancamiento Var. Rel.'], true)}</td>
-                    <td>${formatCell(item['Endeudamiento Var. Rel.'], true)}</td>
-                    <td>${formatCell(item['BancoSaldo Var. Rel.'], true)}</td>
-                    <td>${formatCell(item['Bienes Var. Rel.'], true)}</td>
-                    <td>${formatCell(item['Inversiones Var. Rel.'], true)}</td>
-                    <td>${formatCell(item['Ingresos Var. Rel.'], true)}</td>
-                    <td style="position: sticky; right: 0; background-color: white;">
-                        <button onclick="detailHandlers.viewDetails('${item.Usuario}', ${item['Año Declaración']})" 
-                            style="background-color: #0b00a2; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">
-                            Detalles
-                        </button>
-                    </td>
-                </tr>
-            `;
-        }).join('');
-
-        DOM.tableScrollContainer.scrollTop = 0;
-    },
-
-    sortTable: (columnName, direction) => {
-        state.filteredData.sort((a, b) => {
-            let valA = a[columnName];
-            let valB = b[columnName];
-            
-            if (!isNaN(parseFloat(valA)) && !isNaN(parseFloat(valB))) {
-                valA = parseFloat(valA);
-                valB = parseFloat(valB);
-                return direction === 'asc' ? valA - valB : valB - valA;
+        // Highlight the button
+        const buttons = document.querySelectorAll('.filter-buttons button');
+        buttons.forEach(button => {
+            if (button.textContent.includes(column) && 
+                button.textContent.includes(operator) &&
+                button.textContent.includes(value1)) {
+                button.classList.add('active');
             }
-            
-            if (typeof valA === 'string' && typeof valB === 'string') {
-                return direction === 'asc' 
-                    ? valA.localeCompare(valB) 
-                    : valB.localeCompare(valA);
+        });
+    } else {
+        // Remove existing filter
+        filters.splice(existingIndex, 1);
+        
+        // Remove highlight from button
+        const buttons = document.querySelectorAll('.filter-buttons button');
+        buttons.forEach(button => {
+            if (button.textContent.includes(column) && 
+                button.textContent.includes(operator) &&
+                button.textContent.includes(value1)) {
+                button.classList.remove('active');
             }
-            
-            return 0;
         });
-        
-        tableHandlers.renderTable();
-        if (state.currentFilterColumn) {
-            tableHandlers.highlightColumn(state.currentFilterColumn);
-        }
-    },
-
-    highlightColumn: (columnName) => {
-        const headers = document.querySelectorAll('#results th');
-        const cells = document.querySelectorAll('#results td');
-        
-        headers.forEach(header => header.classList.remove('highlighted-column'));
-        cells.forEach(cell => cell.classList.remove('highlighted-column'));
-        
-        const columnIndex = CONFIG.columnMap[columnName];
-        if (columnIndex === undefined) return;
-        
-        if (headers[columnIndex]) {
-            headers[columnIndex].classList.add('highlighted-column');
-        }
-        
-        document.querySelectorAll(`#results tr td:nth-child(${columnIndex + 1})`).forEach(cell => {
-            cell.classList.add('highlighted-column');
-        });
-    },
-
-    quickFilter: (columnName) => {
-        columnStatsHandlers.showColumnStats(columnName);
-        
-        if (state.currentSortColumn === columnName) {
-            state.sortDirection = state.sortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-            state.currentSortColumn = columnName;
-            state.sortDirection = 'asc';
-        }
-        
-        document.querySelectorAll('#results th').forEach(th => {
-            th.classList.remove('sorted-asc', 'sorted-desc');
-        });
-        
-        const columnIndex = CONFIG.columnMap[columnName];
-        if (columnIndex !== undefined) {
-            const header = document.querySelector(`#results th:nth-child(${columnIndex + 1})`);
-            if (header) {
-                header.classList.add(`sorted-${state.sortDirection}`);
-                
-                const icon = header.querySelector('.sort-icon');
-                if (icon) {
-                    icon.textContent = state.sortDirection === 'asc' ? '↑' : '↓';
-                }
-            }
-        }
-        
-        DOM.columnSelect.value = columnName;
-        DOM.columnSelect.classList.add('highlighted');
-        DOM.value1Input.focus();
-        
-        tableHandlers.highlightColumn(columnName);
-        state.currentFilterColumn = columnName;
-        state.lastSelectedColumn = columnName;
-        
-        tableHandlers.sortTable(columnName, state.sortDirection);
     }
-};
+    
+    renderFilters();
+    applyFilters();
+    highlightColumn(column);
+}
 
-// Manejadores de estadísticas de columnas
-const columnStatsHandlers = {
-    showColumnStats: (columnName) => {
-        const values = state.allData.map(item => item[columnName]);
-        const numericValues = values
-            .map(v => utils.parseNumericValue(v))
-            .filter(v => !isNaN(v));
+// Clear all filters
+function clearFilters() {
+    // Clear the filters array
+    filters.length = 0;
+    
+    // Reset the filter form inputs
+    document.getElementById('column').value = '';
+    document.getElementById('operator').value = '>';
+    document.getElementById('value1').value = '';
+    document.getElementById('value2').value = '';
+    document.getElementById('value2').style.display = 'none';
+    
+    // Reset the UI
+    renderFilters();
+    filteredData = [...allData];
+    renderTable();
+    
+    // Clear button highlights
+    document.querySelectorAll('.filter-buttons button').forEach(button => {
+        button.classList.remove('active');
+    });
+    
+    // Clear column highlights
+    document.querySelectorAll('.highlighted-column').forEach(el => {
+        el.classList.remove('highlighted-column');
+    });
+    
+    // Reset column dropdown
+    document.getElementById('column').classList.remove('highlighted');
+    currentFilterColumn = '';
+    lastSelectedColumn = '';
+    
+    // Reset sort indicators
+    document.querySelectorAll('#results th .sort-icon').forEach(icon => {
+        icon.textContent = '↕';
+    });
+    document.querySelectorAll('#results th').forEach(th => {
+        th.classList.remove('sorted-asc', 'sorted-desc');
+    });
+    
+    // Reset sort state
+    currentSortColumn = '';
+    sortDirection = 'asc';
+}
+
+// Render the data table
+function renderTable() {
+    const tbody = document.querySelector('#results tbody');
+    
+    if (filteredData.length === 0) {
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="37">Generando datos desde el archivo excel</td>
+            </tr>
+        `;
+        return;
+    }
+    
+    tbody.innerHTML = filteredData.map(item => {
+        // Function to format cell with color based on value
+        const formatCell = (value, isPercentage = false) => {
+            if (value === undefined || value === null || value === '') return '';
             
-        const isNumeric = numericValues.length > 0;
-        
-        let stats = {
-            count: values.length,
-            uniqueCount: new Set(values.filter(v => v !== undefined && v !== null)).size,
-            min: null,
-            max: null,
-            avg: null,
-            commonValues: [],
-            allUniqueValues: []
+            // Remove trend icons if present
+            const cleanValue = String(value).replace(/[📈📉➡️]/g, '').trim();
+            
+            // Try to parse as number
+            const numValue = parseFloat(cleanValue.replace('%', '').replace(/[^\d.-]/g, ''));
+            if (isNaN(numValue)) return value;
+            
+            // Format number
+            let formattedValue;
+            if (isPercentage) {
+                formattedValue = numValue.toFixed(2) + '%';
+            } else if (Math.abs(numValue) >= 1000000) {
+                formattedValue = '$' + (numValue / 1000000).toFixed(2) + 'M';
+            } else {
+                formattedValue = new Intl.NumberFormat('es-CO').format(numValue);
+            }
+            
+            // Determine color - only red for negative, black otherwise
+            const color = numValue < 0 ? 'color: #dc3545;' : 'color: #000;';
+            
+            return `<span style="${color}">${formattedValue}</span>`;
         };
         
-        if (isNumeric) {
-            stats.min = Math.min(...numericValues);
-            stats.max = Math.max(...numericValues);
-            stats.avg = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
-        }
-        
-        const valueCounts = {};
-        values.forEach(v => {
-            if (v !== undefined && v !== null) {
-                const val = typeof v === 'string' ? v.trim() : v;
-                valueCounts[val] = (valueCounts[val] || 0) + 1;
-            }
-        });
-        
-        stats.commonValues = Object.entries(valueCounts)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 5)
-            .map(([value, count]) => ({ value, count }));
-        
-        stats.allUniqueValues = Object.keys(valueCounts)
-            .sort((a, b) => {
-                if (isNumeric) {
-                    return parseFloat(a) - parseFloat(b);
-                }
-                return a.localeCompare(b);
-            });
-        
-        const modalHTML = `
-            <div id="columnStatsModal" class="modal-overlay">
-                <div class="modal-content" style="max-width: 800px;">
-                    <div class="modal-header">
-                        <h2>Estadísticas de Columna: ${columnName}</h2>
-                        <button onclick="modalHandlers.closeModal()" class="close-button">×</button>
-                    </div>
-                    
-                    <div class="modal-tabs">
-                        <button class="tab-btn active" onclick="modalHandlers.switchTab('stats', this)">Estadísticas</button>
-                        <button class="tab-btn" onclick="modalHandlers.switchTab('values', this)">Todos los Valores (${stats.allUniqueValues.length})</button>
-                    </div>
-                    
-                    <div class="modal-body">
-                        <div id="stats-tab" class="tab-content active">
-                            <div class="stats-grid">
-                                <div class="stat-item">
-                                    <strong>Total de valores:</strong>
-                                    <span>${stats.count}</span>
-                                </div>
-                                <div class="stat-item">
-                                    <strong>Valores únicos:</strong>
-                                    <span>${stats.uniqueCount}</span>
-                                </div>
-                                ${isNumeric ? `
-                                <div class="stat-item">
-                                    <strong>Mínimo:</strong>
-                                    <span>${utils.formatNumber(stats.min)}</span>
-                                </div>
-                                <div class="stat-item">
-                                    <strong>Máximo:</strong>
-                                    <span>${utils.formatNumber(stats.max)}</span>
-                                </div>
-                                <div class="stat-item">
-                                    <strong>Promedio:</strong>
-                                    <span>${utils.formatNumber(stats.avg)}</span>
-                                </div>
-                                ` : ''}
-                            </div>
-                            
-                            <div class="common-values-section">
-                                <h3>Valores más comunes</h3>
-                                <div class="common-values-grid">
-                                    ${stats.commonValues.map(item => `
-                                        <div class="common-value-item">
-                                            <span class="value">${utils.formatNumber(item.value)}</span>
-                                            <span class="count">${item.count} (${Math.round((item.count / stats.count) * 100)}%)</span>
-                                            <button onclick="columnStatsHandlers.applyCommonValueFilter('${columnName}', '${item.value.replace(/'/g, "\\'")}')" 
-                                                    class="apply-filter-btn">
-                                                Filtrar
-                                            </button>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                            </div>
-                            
-                            <div class="quick-filter-actions">
-                                <button onclick="columnStatsHandlers.applyMinMaxFilter('${columnName}', 'min')" class="action-btn">
-                                    Filtrar por mínimo
-                                </button>
-                                <button onclick="columnStatsHandlers.applyMinMaxFilter('${columnName}', 'max')" class="action-btn">
-                                    Filtrar por máximo
-                                </button>
-                                <button onclick="columnStatsHandlers.applyAvgFilter('${columnName}')" class="action-btn" ${!isNumeric ? 'disabled' : ''}>
-                                    Filtrar por promedio
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div id="values-tab" class="tab-content">
-                            <div class="values-search">
-                                <input type="text" id="values-search-input" placeholder="Buscar valores..." 
-                                       oninput="columnStatsHandlers.searchValues('${columnName}')">
-                                <div class="values-count">
-                                    Mostrando <span id="values-showing">0</span> de ${stats.allUniqueValues.length} valores
-                                </div>
-                            </div>
-                            <div class="values-container" id="values-container"></div>
-                            <div class="values-pagination">
-                                <button id="values-prev" onclick="columnStatsHandlers.navigateValuesPage(-1)" disabled>Anterior</button>
-                                <span id="values-page-info">Página 1</span>
-                                <button id="values-next" onclick="columnStatsHandlers.navigateValuesPage(1)">Siguiente</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-        
-        state.currentValuesPage = 1;
-        state.currentValuesSearch = '';
-        state.currentValuesColumn = columnName;
-        columnStatsHandlers.renderValuesPage();
-    },
-
-    renderValuesPage: () => {
-        const container = document.getElementById('values-container');
-        if (!container) return;
-        
-        const columnValues = state.allData.map(item => item[state.currentValuesColumn]);
-        const valueCounts = {};
-        columnValues.forEach(v => {
-            if (v !== undefined && v !== null) {
-                const val = typeof v === 'string' ? v.trim() : v;
-                valueCounts[val] = (valueCounts[val] || 0) + 1;
-            }
-        });
-        
-        let allValues = Object.keys(valueCounts)
-            .sort((a, b) => {
-                const isNumeric = !isNaN(parseFloat(a)) && !isNaN(parseFloat(b));
-                if (isNumeric) {
-                    return parseFloat(a) - parseFloat(b);
-                }
-                return a.localeCompare(b);
-            });
-        
-        if (state.currentValuesSearch) {
-            const searchTerm = state.currentValuesSearch.toLowerCase();
-            allValues = allValues.filter(v => 
-                String(v).toLowerCase().includes(searchTerm)
-            );
-        }
-        
-        const totalValues = allValues.length;
-        const totalPages = Math.ceil(totalValues / CONFIG.valuesPerPage);
-        const startIdx = (state.currentValuesPage - 1) * CONFIG.valuesPerPage;
-        const endIdx = Math.min(startIdx + CONFIG.valuesPerPage, totalValues);
-        const pageValues = allValues.slice(startIdx, endIdx);
-        
-        container.innerHTML = pageValues.map(value => `
-            <div class="value-item">
-                <span class="value">${utils.formatNumber(value)}</span>
-                <span class="count">${valueCounts[value]} (${Math.round((valueCounts[value] / columnValues.length) * 100)}%)</span>
-                <button onclick="columnStatsHandlers.applyCommonValueFilter('${state.currentValuesColumn}', '${value.replace(/'/g, "\\'")}')" 
-                        class="apply-filter-btn">
-                    Filtrar
-                </button>
-            </div>
-        `).join('');
-        
-        document.getElementById('values-showing').textContent = `${startIdx + 1}-${endIdx}`;
-        document.getElementById('values-page-info').textContent = `Página ${state.currentValuesPage} de ${totalPages}`;
-        document.getElementById('values-prev').disabled = state.currentValuesPage <= 1;
-        document.getElementById('values-next').disabled = state.currentValuesPage >= totalPages;
-    },
-
-    searchValues: (columnName) => {
-        state.currentValuesSearch = document.getElementById('values-search-input').value;
-        state.currentValuesPage = 1;
-        state.currentValuesColumn = columnName;
-        columnStatsHandlers.renderValuesPage();
-    },
-
-    navigateValuesPage: (direction) => {
-        state.currentValuesPage += direction;
-        columnStatsHandlers.renderValuesPage();
-    },
-
-    applyCommonValueFilter: (columnName, value) => {
-        DOM.columnSelect.value = columnName;
-        DOM.operatorSelect.value = '=';
-        DOM.value1Input.value = value;
-        filterHandlers.addFilter();
-        modalHandlers.closeModal();
-    },
-
-    applyMinMaxFilter: (columnName, type) => {
-        const columnValues = state.allData.map(item => utils.parseNumericValue(item[columnName])).filter(v => !isNaN(v));
-        if (columnValues.length === 0) return;
-        
-        const value = type === 'min' ? Math.min(...columnValues) : Math.max(...columnValues);
-        
-        DOM.columnSelect.value = columnName;
-        DOM.operatorSelect.value = '=';
-        DOM.value1Input.value = value;
-        filterHandlers.addFilter();
-        modalHandlers.closeModal();
-    },
-
-    applyAvgFilter: (columnName) => {
-        const columnValues = state.allData.map(item => utils.parseNumericValue(item[columnName])).filter(v => !isNaN(v));
-        if (columnValues.length === 0) return;
-        
-        const avg = columnValues.reduce((a, b) => a + b, 0) / columnValues.length;
-        
-        DOM.columnSelect.value = columnName;
-        DOM.operatorSelect.value = '>=';
-        DOM.value1Input.value = avg.toFixed(2);
-        filterHandlers.addFilter();
-        modalHandlers.closeModal();
-    }
-};
-
-// Manejadores de detalles
-const detailHandlers = {
-    viewDetails: (userId, year) => {
-        year = typeof year === 'string' ? parseInt(year) : year;
-        
-        const record = state.allData.find(item => {
-            const itemUserId = item.Usuario ? item.Usuario.toString().toLowerCase() : '';
-            const itemYear = item['Año Declaración'] ? parseInt(item['Año Declaración']) : null;
-            return itemUserId === userId.toLowerCase() && itemYear === year;
-        });
-
-        if (!record) {
-            alert(`Registro no encontrado para:\nUsuario: ${userId}\nAño: ${year}`);
-            console.error('Record not found:', { userId, year, allData: state.allData });
-            return;
-        }
-
-        const modalHTML = `
-            <div id="detailModal" class="modal-overlay">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h2>Detalles Completo - ${record.Nombre} (${year})</h2>
-                        <div>
-                            <button onclick="exportHandlers.exportDetailsToExcel()" style="margin-right: 10px; padding: 5px 10px; background-color: #0b00a2; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                                Exportar a Excel
-                            </button>
-                            <button onclick="modalHandlers.closeModal()" class="close-button">×</button>
-                        </div>
-                    </div>
-                    
-                    <div class="modal-body">
-                        ${detailHandlers.renderDetailSection('Información Básica', [
-                            { label: 'Nombre', value: record.Nombre },
-                            { label: 'Usuario', value: record.Usuario },
-                            { label: 'Compañía', value: record['Compañía'] },
-                            { label: 'Cargo', value: record.Cargo },
-                            { label: 'Año Declaración', value: record['Año Declaración'] },
-                            { label: 'Año Creación', value: record['Año Creación'] }
-                        ])}
-                        
-                        ${detailHandlers.renderFinancialSection('Resumen Financiero', record)}
-                        
-                        ${detailHandlers.renderVariationSection('Variaciones Recientes', record)}
-                        
-                        ${detailHandlers.renderYearlyVariationSection('Variaciones con 2021', record, '2021')}
-                        ${detailHandlers.renderYearlyVariationSection('Variaciones con 2022', record, '2022')}
-                        ${detailHandlers.renderYearlyVariationSection('Variaciones con 2023', record, '2023')}
-                        ${detailHandlers.renderYearlyVariationSection('Variaciones con 2024', record, '2024')}
-                        
-                        ${detailHandlers.renderYearlyCountVariationSection('Variaciones de Cantidad con 2021', record, '2021')}
-                        ${detailHandlers.renderYearlyCountVariationSection('Variaciones de Cantidad con 2022', record, '2022')}
-                        ${detailHandlers.renderYearlyCountVariationSection('Variaciones de Cantidad con 2023', record, '2023')}
-                        ${detailHandlers.renderYearlyCountVariationSection('Variaciones de Cantidad con 2024', record, '2024')}
-                    </div>
-                </div>
-            </div>
-        `;
-
-        document.body.insertAdjacentHTML('beforeend', modalHTML);
-    },
-
-    renderDetailSection: (title, fields) => {
-        const filteredFields = fields.filter(field => field.value !== undefined && field.value !== null);
-        if (filteredFields.length === 0) return '';
-        
         return `
-            <div class="detail-section">
-                <h3>${title}</h3>
-                <div class="detail-grid">
-                    ${filteredFields.map(field => `
-                        <div class="detail-item">
-                            <strong>${field.label}:</strong>
-                            <span>${field.value}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
+            <tr>
+                <td style="position: sticky; left: 0; background-color: white; z-index: 2;">${item.Nombre || ''}</td>
+                <td style="position: sticky; left: 100px; background-color: white; z-index: 2;">${item['Año Declaración'] || ''}</td>
+                <td style="position: sticky; left: 150px; background-color: white; z-index: 2;">${item['Compañía'] || ''}</td>
+                <td style="position: sticky; left: 250px; background-color: white; z-index: 2;">${item.Cargo || ''}</td>
+                <td>${item.Usuario || ''}</td>
+                <td>${formatCell(item.Activos)}</td>
+                <td>${formatCell(item.Pasivos)}</td>
+                <td>${formatCell(item.Patrimonio)}</td>
+                <td>${formatCell(item.Apalancamiento, true)}</td>
+                <td>${formatCell(item.Endeudamiento, true)}</td>
+                <td>${formatCell(item['Cant_Deudas'])}</td>
+                <td>${formatCell(item.BancoSaldo)}</td>
+                <td>${formatCell(item.Cant_Bancos)}</td>
+                <td>${formatCell(item.Bienes)}</td>
+                <td>${formatCell(item.Cant_Bienes)}</td>
+                <td>${formatCell(item.Inversiones)}</td>
+                <td>${formatCell(item.Cant_Inversiones)}</td>
+                <td>${formatCell(item.Ingresos)}</td>
+                <td>${formatCell(item.Cant_Ingresos)}</td>
+                <td>${formatCell(item['Activos Var. Abs.'])}</td>
+                <td>${formatCell(item['Pasivos Var. Abs.'])}</td>
+                <td>${formatCell(item['Patrimonio Var. Abs.'])}</td>
+                <td>${formatCell(item['Apalancamiento Var. Abs.'], true)}</td>
+                <td>${formatCell(item['Endeudamiento Var. Abs.'], true)}</td>
+                <td>${formatCell(item['BancoSaldo Var. Abs.'])}</td>
+                <td>${formatCell(item['Bienes Var. Abs.'])}</td>
+                <td>${formatCell(item['Inversiones Var. Abs.'])}</td>
+                <td>${formatCell(item['Ingresos Var. Abs.'])}</td>
+                <td>${formatCell(item['Activos Var. Rel.'], true)}</td>
+                <td>${formatCell(item['Pasivos Var. Rel.'], true)}</td>
+                <td>${formatCell(item['Patrimonio Var. Rel.'], true)}</td>
+                <td>${formatCell(item['Apalancamiento Var. Rel.'], true)}</td>
+                <td>${formatCell(item['Endeudamiento Var. Rel.'], true)}</td>
+                <td>${formatCell(item['BancoSaldo Var. Rel.'], true)}</td>
+                <td>${formatCell(item['Bienes Var. Rel.'], true)}</td>
+                <td>${formatCell(item['Inversiones Var. Rel.'], true)}</td>
+                <td>${formatCell(item['Ingresos Var. Rel.'], true)}</td>
+                <td style="position: sticky; right: 0; background-color: white;">
+                    <button onclick="viewDetails('${item.Usuario}', ${item['Año Declaración']})" style="background-color: #0b00a2; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Detalles</button>
+                </td>
+            </tr>
         `;
-    },
+    }).join('');
 
-    renderFinancialSection: (title, record) => {
-        const financialFields = [
-            { label: 'Activos', value: utils.formatNumber(record.Activos) },
-            { label: 'Pasivos', value: utils.formatNumber(record.Pasivos) },
-            { label: 'Patrimonio', value: utils.formatNumber(record.Patrimonio) },
-            { label: 'Apalancamiento', value: record.Apalancamiento ? `${record.Apalancamiento}%` : null },
-            { label: 'Endeudamiento', value: record.Endeudamiento ? `${record.Endeudamiento}%` : null },
-            { label: 'Saldo Bancario', value: utils.formatNumber(record.BancoSaldo) },
-            { label: 'Bienes', value: utils.formatNumber(record.Bienes) },
-            { label: 'Inversiones', value: utils.formatNumber(record.Inversiones) },
-            { label: 'Ingresos', value: utils.formatNumber(record.Ingresos) }
-        ].filter(field => field.value !== undefined && field.value !== null);
-        
-        return detailHandlers.renderDetailSection(title, financialFields);
-    },
+    // Scroll to top after rendering
+    document.querySelector('.table-scroll-container').scrollTop = 0;
+}
 
-    renderVariationSection: (title, record) => {
-        const variationFields = [
-            { label: 'Activos Var. Abs.', value: record['Activos Var. Abs.'] },
-            { label: 'Activos Var. Rel.', value: record['Activos Var. Rel.'] },
-            { label: 'Pasivos Var. Abs.', value: record['Pasivos Var. Abs.'] },
-            { label: 'Pasivos Var. Rel.', value: record['Pasivos Var. Rel.'] },
-            { label: 'Patrimonio Var. Abs.', value: record['Patrimonio Var. Abs.'] },
-            { label: 'Patrimonio Var. Rel.', value: record['Patrimonio Var. Rel.'] },
-            { label: 'Apalancamiento Var. Abs.', value: record['Apalancamiento Var. Abs.'] },
-            { label: 'Apalancamiento Var. Rel.', value: record['Apalancamiento Var. Rel.'] },
-            { label: 'Endeudamiento Var. Abs.', value: record['Endeudamiento Var. Abs.'] },
-            { label: 'Endeudamiento Var. Rel.', value: record['Endeudamiento Var. Rel.'] },
-            { label: 'BancoSaldo Var. Abs.', value: record['BancoSaldo Var. Abs.'] },
-            { label: 'BancoSaldo Var. Rel.', value: record['BancoSaldo Var. Rel.'] },
-            { label: 'Bienes Var. Abs.', value: record['Bienes Var. Abs.'] },
-            { label: 'Bienes Var. Rel.', value: record['Bienes Var. Rel.'] },
-            { label: 'Inversiones Var. Abs.', value: record['Inversiones Var. Abs.'] },
-            { label: 'Inversiones Var. Rel.', value: record['Inversiones Var. Rel.'] },
-            { label: 'Ingresos Var. Abs.', value: record['Ingresos Var. Abs.'] },
-            { label: 'Ingresos Var. Rel.', value: record['Ingresos Var. Rel.'] }
-        ].filter(field => field.value !== undefined && field.value !== null);
-        
-        if (variationFields.length === 0) return '';
-        
-        return `
-            <div class="detail-section">
-                <h3>${title}</h3>
-                <div class="variation-grid">
-                    ${variationFields.map(field => `
-                        <div class="variation-item">
-                            <strong>${field.label}:</strong>
-                            <span>${field.value}</span>
-                        </div>
-                    `).join('')}
-                </div>
-            </div>
-        `;
-    },
-
-    renderYearlyVariationSection: (title, record, year) => {
-        const yearlyFields = [
-            { label: `Activos Var. Abs. ${year}`, value: record[`${year} Activos Var. Abs.`] },
-            { label: `Activos Var. Rel. ${year}`, value: record[`${year} Activos Var. Rel.`] },
-            { label: `Pasivos Var. Abs. ${year}`, value: record[`${year} Pasivos Var. Abs.`] },
-            { label: `Pasivos Var. Rel. ${year}`, value: record[`${year} Pasivos Var. Rel.`] },
-            { label: `Patrimonio Var. Abs. ${year}`, value: record[`${year} Patrimonio Var. Abs.`] },
-            { label: `Patrimonio Var. Rel. ${year}`, value: record[`${year} Patrimonio Var. Rel.`] },
-            { label: `BancoSaldo Var. Abs. ${year}`, value: record[`${year} BancoSaldo Var. Abs.`] },
-            { label: `BancoSaldo Var. Rel. ${year}`, value: record[`${year} BancoSaldo Var. Rel.`] },
-            { label: `Bienes Var. Abs. ${year}`, value: record[`${year} Bienes Var. Abs.`] },
-            { label: `Bienes Var. Rel. ${year}`, value: record[`${year} Bienes Var. Rel.`] },
-            { label: `Inversiones Var. Abs. ${year}`, value: record[`${year} Inversiones Var. Abs.`] },
-            { label: `Inversiones Var. Rel. ${year}`, value: record[`${year} Inversiones Var. Rel.`] },
-            { label: `Ingresos Var. Abs. ${year}`, value: record[`${year} Ingresos Var. Abs.`] },
-            { label: `Ingresos Var. Rel. ${year}`, value: record[`${year} Ingresos Var. Rel.`] }
-        ].filter(field => field.value !== undefined && field.value !== null);
-        
-        if (yearlyFields.length === 0) return '';
-        
-        return detailHandlers.renderVariationSection(title, yearlyFields);
-    },
-
-    renderYearlyCountVariationSection: (title, record, year) => {
-        const countVariationFields = [
-            { label: `Cant. Deudas Var. Abs. ${year}`, value: record[`${year} Cant_Deudas Var. Abs.`] },
-            { label: `Cant. Deudas Var. Rel. ${year}`, value: record[`${year} Cant_Deudas Var. Rel.`] },
-            { label: `Cant. Bancos Var. Abs. ${year}`, value: record[`${year} Cant_Bancos Var. Abs.`] },
-            { label: `Cant. Bancos Var. Rel. ${year}`, value: record[`${year} Cant_Bancos Var. Rel.`] },
-            { label: `Cant. Bienes Var. Abs. ${year}`, value: record[`${year} Cant_Bienes Var. Abs.`] },
-            { label: `Cant. Bienes Var. Rel. ${year}`, value: record[`${year} Cant_Bienes Var. Rel.`] },
-            { label: `Cant. Inversiones Var. Abs. ${year}`, value: record[`${year} Cant_Inversiones Var. Abs.`] },
-            { label: `Cant. Inversiones Var. Rel. ${year}`, value: record[`${year} Cant_Inversiones Var. Rel.`] },
-            { label: `Cant. Ingresos Var. Abs. ${year}`, value: record[`${year} Cant_Ingresos Var. Abs.`] },
-            { label: `Cant. Ingresos Var. Rel. ${year}`, value: record[`${year} Cant_Ingresos Var. Rel.`] }
-        ].filter(field => field.value !== undefined && field.value !== null);
-        
-        if (countVariationFields.length === 0) return '';
-        
-        return detailHandlers.renderVariationSection(title, countVariationFields);
-    }
-};
-
-// Manejadores de exportación
-const exportHandlers = {
-    exportDetailsToExcel: () => {
-        const modal = document.getElementById('detailModal');
-        if (!modal) return;
-        
-        const data = [];
-        const sections = modal.querySelectorAll('.detail-section');
-        
-        sections.forEach(section => {
-            const sectionTitle = section.querySelector('h3').textContent;
-            const items = section.querySelectorAll('.detail-item, .variation-item');
-            
-            items.forEach(item => {
-                const label = item.querySelector('strong')?.textContent.replace(':', '') || '';
-                const value = item.querySelector('span')?.textContent || item.textContent.replace(label, '').replace(':', '').trim();
-                
-                if (label && value) {
-                    data.push({
-                        'Sección': sectionTitle,
-                        'Campo': label,
-                        'Valor': value
-                    });
-                }
-            });
-        });
-        
-        if (data.length === 0) {
-            alert('No hay datos para exportar');
-            return;
-        }
-        
-        const worksheet = XLSX.utils.json_to_sheet(data);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Detalles");
-        
-        const modalTitle = modal.querySelector('.modal-header h2').textContent;
-        const fileName = modalTitle.replace('Detalles Completo - ', '').replace(/[\/\\?%*:|"<>]/g, '-') + '.xlsx';
-        
-        XLSX.writeFile(workbook, fileName);
-    },
-
-    exportToExcel: () => {
-        if (state.filteredData.length === 0) {
-            alert('No hay datos para exportar');
-            return;
-        }
-        
-        const exportData = state.filteredData.map(item => ({...item}));
-        const worksheet = XLSX.utils.json_to_sheet(exportData);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "Datos Filtrados");
-        XLSX.writeFile(workbook, 'datos_filtrados.xlsx');
-    }
-};
-
-// Manejadores de modales
-const modalHandlers = {
-    closeModal: () => {
-        const modal = document.getElementById('columnStatsModal') || document.getElementById('detailModal');
-        if (modal) modal.remove();
-    },
-
-    switchTab: (tabId, button) => {
-        document.querySelectorAll('.tab-content').forEach(tab => {
-            tab.classList.remove('active');
-        });
-        
-        document.querySelectorAll('.modal-tabs .tab-btn').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        document.getElementById(`${tabId}-tab`).classList.add('active');
-        button.classList.add('active');
-        
-        if (tabId === 'values' && document.getElementById('values-container').innerHTML === '') {
-            columnStatsHandlers.renderValuesPage();
-        }
-    }
-};
-
-// Inicialización
-document.addEventListener('DOMContentLoaded', () => {
-    dataHandlers.loadData();
-    eventHandlers.setupEventListeners();
-});
-
-// Funciones globales para acceso desde HTML
-window.togglePassword = function(inputId) {
-    const input = document.getElementById(inputId);
-    const toggle = input.nextElementSibling;
+// View detailed record
+function viewDetails(userId, year) {
+    // Convert year to number if it's coming as string
+    year = typeof year === 'string' ? parseInt(year) : year;
     
-    if (input.type === 'password') {
-        input.type = 'text';
-        toggle.textContent = '🙈';
-    } else {
-        input.type = 'password';
-        toggle.textContent = '👁️';
-    }
-};
+    // Find the record with case-insensitive comparison
+    const record = allData.find(item => {
+        // Handle potential undefined/null values
+        const itemUserId = item.Usuario ? item.Usuario.toString().toLowerCase() : '';
+        const itemYear = item['Año Declaración'] ? parseInt(item['Año Declaración']) : null;
+        
+        return itemUserId === userId.toLowerCase() && itemYear === year;
+    });
 
-window.addFilter = filterHandlers.addFilter;
-window.exportToExcel = exportHandlers.exportToExcel;
-window.changeDataSource = dataHandlers.changeDataSource;
-window.applyPredeterminedFilter = filterHandlers.applyPredeterminedFilter;
-window.clearFilters = filterHandlers.clearFilters;
-window.quickFilter = tableHandlers.quickFilter;
-window.viewDetails = detailHandlers.viewDetails;
-window.exportDetailsToExcel = exportHandlers.exportDetailsToExcel;
-window.closeModal = modalHandlers.closeModal;
-window.switchTab = modalHandlers.switchTab;
-window.navigateValuesPage = columnStatsHandlers.navigateValuesPage;
-window.searchValues = columnStatsHandlers.searchValues;
-window.applyCommonValueFilter = columnStatsHandlers.applyCommonValueFilter;
-window.applyMinMaxFilter = columnStatsHandlers.applyMinMaxFilter;
-window.applyAvgFilter = columnStatsHandlers.applyAvgFilter;
+    if (!record) {
+        alert(`Registro no encontrado para:\nUsuario: ${userId}\nAño: ${year}`);
+        console.error('Record not found:', { userId, year, allData });
+        return;
+    }
+
+    // Create modal HTML with all available data
+    const modalHTML = `
+        <div id="detailModal" class="modal-overlay">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h2>Detalles Completo - ${record.Nombre} (${year})</h2>
+                    <div>
+                        <button onclick="exportDetailsToExcel()" style="margin-right: 10px; padding: 5px 10px; background-color: #0b00a2; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            Exportar a Excel
+                        </button>
+                        <button onclick="closeModal()" class="close-button">×</button>
+                    </div>
+                </div>
+                
+                <div class="modal-body">
+                    ${renderDetailSection('Información Básica', [
+                        { label: 'Nombre', value: record.Nombre },
+                        { label: 'Usuario', value: record.Usuario },
+                        { label: 'Compañía', value: record['Compañía'] },
+                        { label: 'Cargo', value: record.Cargo },
+                        { label: 'Año Declaración', value: record['Año Declaración'] },
+                        { label: 'Año Creación', value: record['Año Creación'] }
+                    ])}
+                    
+                    ${renderFinancialSection('Resumen Financiero', record)}
+                    
+                    ${renderVariationSection('Variaciones Recientes', record)}
+                    
+                    <!-- Yearly Variations Sections -->
+                    ${renderYearlyVariationSection('Variaciones con 2021', record, '2021')}
+                    ${renderYearlyVariationSection('Variaciones con 2022', record, '2022')}
+                    ${renderYearlyVariationSection('Variaciones con 2023', record, '2023')}
+                    ${renderYearlyVariationSection('Variaciones con 2024', record, '2024')}
+                    
+                    <!-- Yearly Count Variations Sections -->
+                    ${renderYearlyCountVariationSection('Variaciones de Cantidad con 2021', record, '2021')}
+                    ${renderYearlyCountVariationSection('Variaciones de Cantidad con 2022', record, '2022')}
+                    ${renderYearlyCountVariationSection('Variaciones de Cantidad con 2023', record, '2023')}
+                    ${renderYearlyCountVariationSection('Variaciones de Cantidad con 2024', record, '2024')}
+                </div>
+            </div>
+        </div>
+    `;
+
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+// Helper function to render detail sections
+function renderDetailSection(title, fields) {
+    const filteredFields = fields.filter(field => field.value !== undefined && field.value !== null);
+    
+    if (filteredFields.length === 0) return '';
+    
+    return `
+        <div class="detail-section">
+            <h3>${title}</h3>
+            <div class="detail-grid">
+                ${filteredFields.map(field => `
+                    <div class="detail-item">
+                        <strong>${field.label}:</strong>
+                        <span>${field.value}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// Helper function to render financial section
+function renderFinancialSection(title, record) {
+    const financialFields = [
+        { label: 'Activos', value: formatNumber(record.Activos) },
+        { label: 'Pasivos', value: formatNumber(record.Pasivos) },
+        { label: 'Patrimonio', value: formatNumber(record.Patrimonio) },
+        { label: 'Apalancamiento', value: record.Apalancamiento ? `${record.Apalancamiento}%` : null },
+        { label: 'Endeudamiento', value: record.Endeudamiento ? `${record.Endeudamiento}%` : null },
+        { label: 'Saldo Bancario', value: formatNumber(record.BancoSaldo) },
+        { label: 'Bienes', value: formatNumber(record.Bienes) },
+        { label: 'Inversiones', value: formatNumber(record.Inversiones) },
+        { label: 'Ingresos', value: formatNumber(record.Ingresos) }
+    ].filter(field => field.value !== undefined && field.value !== null);
+    
+    return renderDetailSection(title, financialFields);
+}
+
+// Helper function to render variation sections
+function renderVariationSection(title, record) {
+    const variationFields = [
+        { label: 'Activos Var. Abs.', value: record['Activos Var. Abs.'] },
+        { label: 'Activos Var. Rel.', value: record['Activos Var. Rel.'] },
+        { label: 'Pasivos Var. Abs.', value: record['Pasivos Var. Abs.'] },
+        { label: 'Pasivos Var. Rel.', value: record['Pasivos Var. Rel.'] },
+        { label: 'Patrimonio Var. Abs.', value: record['Patrimonio Var. Abs.'] },
+        { label: 'Patrimonio Var. Rel.', value: record['Patrimonio Var. Rel.'] },
+        { label: 'Apalancamiento Var. Abs.', value: record['Apalancamiento Var. Abs.'] },
+        { label: 'Apalancamiento Var. Rel.', value: record['Apalancamiento Var. Rel.'] },
+        { label: 'Endeudamiento Var. Abs.', value: record['Endeudamiento Var. Abs.'] },
+        { label: 'Endeudamiento Var. Rel.', value: record['Endeudamiento Var. Rel.'] },
+        { label: 'BancoSaldo Var. Abs.', value: record['BancoSaldo Var. Abs.'] },
+        { label: 'BancoSaldo Var. Rel.', value: record['BancoSaldo Var. Rel.'] },
+        { label: 'Bienes Var. Abs.', value: record['Bienes Var. Abs.'] },
+        { label: 'Bienes Var. Rel.', value: record['Bienes Var. Rel.'] },
+        { label: 'Inversiones Var. Abs.', value: record['Inversiones Var. Abs.'] },
+        { label: 'Inversiones Var. Rel.', value: record['Inversiones Var. Rel.'] },
+        { label: 'Ingresos Var. Abs.', value: record['Ingresos Var. Abs.'] },
+        { label: 'Ingresos Var. Rel.', value: record['Ingresos Var. Rel.'] }
+    ].filter(field => field.value !== undefined && field.value !== null);
+    
+    if (variationFields.length === 0) return '';
+    
+    return `
+        <div class="detail-section">
+            <h3>${title}</h3>
+            <div class="variation-grid">
+                ${variationFields.map(field => `
+                    <div class="variation-item">
+                        <strong>${field.label}:</strong>
+                        <span>${field.value}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// Helper function to render yearly variation sections
+function renderYearlyVariationSection(title, record, year) {
+    const yearlyFields = [
+        { label: `Activos Var. Abs. ${year}`, value: record[`${year} Activos Var. Abs.`] },
+        { label: `Activos Var. Rel. ${year}`, value: record[`${year} Activos Var. Rel.`] },
+        { label: `Pasivos Var. Abs. ${year}`, value: record[`${year} Pasivos Var. Abs.`] },
+        { label: `Pasivos Var. Rel. ${year}`, value: record[`${year} Pasivos Var. Rel.`] },
+        { label: `Patrimonio Var. Abs. ${year}`, value: record[`${year} Patrimonio Var. Abs.`] },
+        { label: `Patrimonio Var. Rel. ${year}`, value: record[`${year} Patrimonio Var. Rel.`] },
+        { label: `BancoSaldo Var. Abs. ${year}`, value: record[`${year} BancoSaldo Var. Abs.`] },
+        { label: `BancoSaldo Var. Rel. ${year}`, value: record[`${year} BancoSaldo Var. Rel.`] },
+        { label: `Bienes Var. Abs. ${year}`, value: record[`${year} Bienes Var. Abs.`] },
+        { label: `Bienes Var. Rel. ${year}`, value: record[`${year} Bienes Var. Rel.`] },
+        { label: `Inversiones Var. Abs. ${year}`, value: record[`${year} Inversiones Var. Abs.`] },
+        { label: `Inversiones Var. Rel. ${year}`, value: record[`${year} Inversiones Var. Rel.`] },
+        { label: `Ingresos Var. Abs. ${year}`, value: record[`${year} Ingresos Var. Abs.`] },
+        { label: `Ingresos Var. Rel. ${year}`, value: record[`${year} Ingresos Var. Rel.`] }
+    ].filter(field => field.value !== undefined && field.value !== null);
+    
+    if (yearlyFields.length === 0) return '';
+    
+    return `
+        <div class="detail-section">
+            <h3>${title}</h3>
+            <div class="variation-grid">
+                ${yearlyFields.map(field => `
+                    <div class="variation-item">
+                        <strong>${field.label}:</strong>
+                        <span>${field.value}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// Helper function to render yearly count variations
+function renderYearlyCountVariationSection(title, record, year) {
+    const countVariationFields = [
+        { label: `Cant. Deudas Var. Abs. ${year}`, value: record[`${year} Cant_Deudas Var. Abs.`] },
+        { label: `Cant. Deudas Var. Rel. ${year}`, value: record[`${year} Cant_Deudas Var. Rel.`] },
+        { label: `Cant. Bancos Var. Abs. ${year}`, value: record[`${year} Cant_Bancos Var. Abs.`] },
+        { label: `Cant. Bancos Var. Rel. ${year}`, value: record[`${year} Cant_Bancos Var. Rel.`] },
+        { label: `Cant. Bienes Var. Abs. ${year}`, value: record[`${year} Cant_Bienes Var. Abs.`] },
+        { label: `Cant. Bienes Var. Rel. ${year}`, value: record[`${year} Cant_Bienes Var. Rel.`] },
+        { label: `Cant. Inversiones Var. Abs. ${year}`, value: record[`${year} Cant_Inversiones Var. Abs.`] },
+        { label: `Cant. Inversiones Var. Rel. ${year}`, value: record[`${year} Cant_Inversiones Var. Rel.`] },
+        { label: `Cant. Ingresos Var. Abs. ${year}`, value: record[`${year} Cant_Ingresos Var. Abs.`] },
+        { label: `Cant. Ingresos Var. Rel. ${year}`, value: record[`${year} Cant_Ingresos Var. Rel.`] }
+    ].filter(field => field.value !== undefined && field.value !== null);
+    
+    if (countVariationFields.length === 0) return '';
+    
+    return `
+        <div class="detail-section">
+            <h3>${title}</h3>
+            <div class="variation-grid">
+                ${countVariationFields.map(field => `
+                    <div class="variation-item">
+                        <strong>${field.label}:</strong>
+                        <span>${field.value}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+
+// Format numbers with thousands separator
+function formatNumber(num) {
+    if (num === undefined || num === null) return 'N/A';
+    return new Intl.NumberFormat('es-CO').format(num);
+}
+
+function quickFilter(columnName) {
+    // First, show the column stats in a modal
+    showColumnStats(columnName);
+    
+    // Then proceed with the existing sorting functionality
+    if (currentSortColumn === columnName) {
+        sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        currentSortColumn = columnName;
+        sortDirection = 'asc';
+    }
+    
+    document.querySelectorAll('#results th').forEach(th => {
+        th.classList.remove('sorted-asc', 'sorted-desc');
+    });
+    
+    const columnMap = {
+        'Usuario': 4,
+        'Nombre': 0,
+        'Compañía': 2,
+        'Cargo': 3,
+        'Año Declaración': 1,
+        'Activos': 5,
+        'Pasivos': 6,
+        'Patrimonio': 7,
+        'Apalancamiento': 8,
+        'Endeudamiento': 9,
+        'Cant_Deudas': 10,
+        'BancoSaldo': 11,
+        'Cant_Bancos': 12,
+        'Bienes': 13,
+        'Cant_Bienes': 14,
+        'Inversiones': 15,
+        'Cant_Inversiones': 16,
+        'Ingresos': 17,
+        'Cant_Ingresos': 18,
+        'Activos Var. Abs.': 19,
+        'Pasivos Var. Abs.': 20,
+        'Patrimonio Var. Abs.': 21,
+        'Apalancamiento Var. Abs.': 22,
+        'Endeudamiento Var. Abs.': 23,
+        'BancoSaldo Var. Abs.': 24,
+        'Bienes Var. Abs.': 25,
+        'Inversiones Var. Abs.': 26,
+        'Ingresos Var. Abs.': 27,
+        'Activos Var. Rel.': 28,
+        'Pasivos Var. Rel.': 29,
+        'Patrimonio Var. Rel.': 30,
+        'Apalancamiento Var. Rel.': 31,
+        'Endeudamiento Var. Rel.': 32,
+        'BancoSaldo Var. Rel.': 33,
+        'Bienes Var. Rel.': 34,
+        'Inversiones Var. Rel.': 35,
+        'Ingresos Var. Rel.': 36
+    };
+    
+    const columnIndex = columnMap[columnName];
+    if (columnIndex !== undefined) {
+        const header = document.querySelector(`#results th:nth-child(${columnIndex + 1})`);
+        if (header) {
+            header.classList.add(`sorted-${sortDirection}`);
+            
+            const icon = header.querySelector('.sort-icon');
+            if (icon) {
+                icon.textContent = sortDirection === 'asc' ? '↑' : '↓';
+            }
+        }
+    }
+    
+    document.getElementById('column').value = columnName;
+    document.getElementById('column').classList.add('highlighted');
+    document.getElementById('value1').focus();
+    
+    highlightColumn(columnName);
+    currentFilterColumn = columnName;
+    lastSelectedColumn = columnName;
+    
+    sortTable(columnName, sortDirection);
+}
+
+function showColumnStats(columnName) {
+    // Collect all values for this column
+    const values = allData.map(item => item[columnName]);
+    
+    // Calculate basic statistics
+    const numericValues = values
+        .map(v => typeof v === 'string' ? parseFloat(v.replace(/[^\d.-]/g, '')) : parseFloat(v))
+        .filter(v => !isNaN(v));
+        
+    const isNumeric = numericValues.length > 0;
+    
+    let stats = {
+        count: values.length,
+        uniqueCount: new Set(values.filter(v => v !== undefined && v !== null)).size,
+        min: null,
+        max: null,
+        avg: null,
+        commonValues: [],
+        allUniqueValues: []
+    };
+    
+    if (isNumeric) {
+        stats.min = Math.min(...numericValues);
+        stats.max = Math.max(...numericValues);
+        stats.avg = numericValues.reduce((a, b) => a + b, 0) / numericValues.length;
+    }
+    
+    // Find most common values (top 5)
+    const valueCounts = {};
+    values.forEach(v => {
+        if (v !== undefined && v !== null) {
+            const val = typeof v === 'string' ? v.trim() : v;
+            valueCounts[val] = (valueCounts[val] || 0) + 1;
+        }
+    });
+    
+    stats.commonValues = Object.entries(valueCounts)
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 5)
+        .map(([value, count]) => ({ value, count }));
+    
+    // Get all unique values (sorted)
+    stats.allUniqueValues = Object.keys(valueCounts)
+        .sort((a, b) => {
+            if (isNumeric) {
+                return parseFloat(a) - parseFloat(b);
+            }
+            return a.localeCompare(b);
+        });
+    
+    // Format numbers for display
+    const formatNumber = (num) => {
+        if (num === null || num === undefined) return 'N/A';
+        if (typeof num === 'string') return num;
+        if (Math.abs(num) >= 1000000) {
+            return '$' + (num / 1000000).toFixed(2) + 'M';
+        }
+        return new Intl.NumberFormat('es-CO').format(num);
+    };
+    
+    // Create modal HTML with tabs
+    const modalHTML = `
+        <div id="columnStatsModal" class="modal-overlay">
+            <div class="modal-content" style="max-width: 800px;">
+                <div class="modal-header">
+                    <h2>Estadísticas de Columna: ${columnName}</h2>
+                    <button onclick="closeModal()" class="close-button">×</button>
+                </div>
+                
+                <div class="modal-tabs">
+                    <button class="tab-btn active" onclick="switchTab('stats', this)">Estadísticas</button>
+                    <button class="tab-btn" onclick="switchTab('values', this)">Todos los Valores (${stats.allUniqueValues.length})</button>
+                </div>
+                
+                <div class="modal-body">
+                    <div id="stats-tab" class="tab-content active">
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <strong>Total de valores:</strong>
+                                <span>${stats.count}</span>
+                            </div>
+                            <div class="stat-item">
+                                <strong>Valores únicos:</strong>
+                                <span>${stats.uniqueCount}</span>
+                            </div>
+                            ${isNumeric ? `
+                            <div class="stat-item">
+                                <strong>Mínimo:</strong>
+                                <span>${formatNumber(stats.min)}</span>
+                            </div>
+                            <div class="stat-item">
+                                <strong>Máximo:</strong>
+                                <span>${formatNumber(stats.max)}</span>
+                            </div>
+                            <div class="stat-item">
+                                <strong>Promedio:</strong>
+                                <span>${formatNumber(stats.avg)}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="common-values-section">
+                            <h3>Valores más comunes</h3>
+                            <div class="common-values-grid">
+                                ${stats.commonValues.map(item => `
+                                    <div class="common-value-item">
+                                        <span class="value">${formatNumber(item.value)}</span>
+                                        <span class="count">${item.count} (${Math.round((item.count / stats.count) * 100)}%)</span>
+                                        <button onclick="applyCommonValueFilter('${columnName}', '${item.value.replace(/'/g, "\\'")}')" 
+                                                class="apply-filter-btn">
+                                            Filtrar
+                                        </button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>
+                        
+                        <div class="quick-filter-actions">
+                            <button onclick="applyMinMaxFilter('${columnName}', 'min')" class="action-btn">
+                                Filtrar por mínimo
+                            </button>
+                            <button onclick="applyMinMaxFilter('${columnName}', 'max')" class="action-btn">
+                                Filtrar por máximo
+                            </button>
+                            <button onclick="applyAvgFilter('${columnName}')" class="action-btn" ${!isNumeric ? 'disabled' : ''}>
+                                Filtrar por promedio
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div id="values-tab" class="tab-content">
+                        <div class="values-search">
+                            <input type="text" id="values-search-input" placeholder="Buscar valores..." 
+                                   oninput="searchValues('${columnName}')">
+                            <div class="values-count">
+                                Mostrando <span id="values-showing">0</span> de ${stats.allUniqueValues.length} valores
+                            </div>
+                        </div>
+                        <div class="values-container" id="values-container">
+                            <!-- Values will be loaded here with pagination -->
+                        </div>
+                        <div class="values-pagination">
+                            <button id="values-prev" onclick="navigateValuesPage(-1)" disabled>Anterior</button>
+                            <span id="values-page-info">Página 1</span>
+                            <button id="values-next" onclick="navigateValuesPage(1)">Siguiente</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Add to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    
+    // Initialize values tab
+    currentValuesPage = 1;
+    currentValuesSearch = '';
+    currentValuesColumn = columnName;
+    renderValuesPage();
+}
+
+function applyCommonValueFilter(columnName, value) {
+    try {
+        // Determine if the value is numeric
+        const isNumeric = !isNaN(parseFloat(value)) && isFinite(value);
+        
+        // Set the operator based on value type
+        const operator = isNumeric ? '=' : 'contains';
+        
+        // Add filter for this value
+        document.getElementById('column').value = columnName;
+        document.getElementById('operator').value = operator;
+        document.getElementById('value1').value = value;
+        
+        addFilter();
+        closeModal();
+    } catch (error) {
+        console.error('Error applying common value filter:', error);
+        alert('Error al aplicar el filtro. Por favor intente nuevamente.');
+    }
+}
+
+function applyMinMaxFilter(columnName, type) {
+    const columnValues = allData.map(item => parseFloat(item[columnName])).filter(v => !isNaN(v));
+    if (columnValues.length === 0) return;
+    
+    const value = type === 'min' ? Math.min(...columnValues) : Math.max(...columnValues);
+    
+    document.getElementById('column').value = columnName;
+    document.getElementById('operator').value = '=';
+    document.getElementById('value1').value = value;
+    addFilter();
+    closeModal();
+}
+
+function applyAvgFilter(columnName) {
+    const columnValues = allData.map(item => parseFloat(item[columnName])).filter(v => !isNaN(v));
+    if (columnValues.length === 0) return;
+    
+    const avg = columnValues.reduce((a, b) => a + b, 0) / columnValues.length;
+    
+    document.getElementById('column').value = columnName;
+    document.getElementById('operator').value = '>=';
+    document.getElementById('value1').value = avg.toFixed(2);
+    addFilter();
+    closeModal();
+}
+
+function closeModal() {
+    const modal = document.getElementById('columnStatsModal') || document.getElementById('detailModal');
+    if (modal) modal.remove();
+}
+
+// Export details to Excel
+function exportDetailsToExcel() {
+    const modal = document.getElementById('detailModal');
+    if (!modal) return;
+    
+    // Get all the data from the modal
+    const data = [];
+    const sections = modal.querySelectorAll('.detail-section');
+    
+    sections.forEach(section => {
+        const sectionTitle = section.querySelector('h3').textContent;
+        const items = section.querySelectorAll('.detail-item, .variation-item');
+        
+        items.forEach(item => {
+            const label = item.querySelector('strong')?.textContent.replace(':', '') || '';
+            const value = item.querySelector('span')?.textContent || item.textContent.replace(label, '').replace(':', '').trim();
+            
+            if (label && value) {
+                data.push({
+                    'Sección': sectionTitle,
+                    'Campo': label,
+                    'Valor': value
+                });
+            }
+        });
+    });
+    
+    if (data.length === 0) {
+        alert('No hay datos para exportar');
+        return;
+    }
+    
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(data);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Detalles");
+    
+    // Get the user name from the modal title
+    const modalTitle = modal.querySelector('.modal-header h2').textContent;
+    const fileName = modalTitle.replace('Detalles Completo - ', '').replace(/[\/\\?%*:|"<>]/g, '-') + '.xlsx';
+    
+    // Export to file
+    XLSX.writeFile(workbook, fileName);
+}
+
+// Export to Excel
+function exportToExcel() {
+    if (filteredData.length === 0) {
+        alert('No hay datos para exportar');
+        return;
+    }
+    
+    // Use the original data with trend icons
+    const exportData = filteredData.map(item => ({...item}));
+    
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Datos Filtrados");
+    
+    // Export to file
+    XLSX.writeFile(workbook, 'datos_filtrados.xlsx');
+}
 '@
 }
 
