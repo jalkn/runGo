@@ -1456,43 +1456,43 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
         <table id="results">
             <thead>
                 <tr>
-                    <th style="position: sticky; left: 0; top: 0; background-color: #f0f0f0; z-index: 2; padding: 8px; border: 1px solid #ddd;"><button onclick="quickFilter('Nombre')">Nombre<span class="sort-icon">↕</span></button></th>
-                    <th style="position: sticky; left: 100px; top: 0; background-color: #f0f0f0; z-index: 2; padding: 8px; border: 1px solid #ddd;"><button onclick="quickFilter('Año Declaración')">Año Declaración<span class="sort-icon">↕</span></button></th>
-                    <th style="position: sticky; left: 150px; top: 0; background-color: #f0f0f0; z-index: 2; padding: 8px; border: 1px solid #ddd;"><button onclick="quickFilter('Compañía')">Compañía<span class="sort-icon">↕</span></button></th>
-                    <th style="position: sticky; left: 250px; top: 0; background-color: #f0f0f0; z-index: 2; padding: 8px; border: 1px solid #ddd;"><button onclick="quickFilter('Cargo')">Cargo<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Usuario')">Usuario<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Activos')">Activos<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Pasivos')">Pasivos<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Patrimonio')">Patrimonio<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Apalancamiento')">Apalancamiento<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Endeudamiento')">Endeudamiento<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Cant_Deudas')">Cant_Deudas<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('BancoSaldo')">BancoSaldo<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Cant_Bancos')">Cant_Bancos<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Bienes')">Bienes<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Cant_Bienes')">Cant_Bienes<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Inversiones')">Inversiones<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Cant_Inversiones')">Cant_Inversiones<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Ingresos')">Ingresos<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Cant_Ingresos')">Cant_Ingresos<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Activos Var. Abs.')">Activos Var. Abs.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Pasivos Var. Abs.')">Pasivos Var. Abs.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Patrimonio Var. Abs.')">Patrimonio Var. Abs.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Apalancamiento Var. Abs.')">Apalancamiento Var. Abs.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Endeudamiento Var. Abs.')">Endeudamiento Var. Abs.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('BancoSaldo Var. Abs.')">BancoSaldo Var. Abs.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Bienes Var. Abs.')">Bienes Var. Abs.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Inversiones Var. Abs.')">Inversiones Var. Abs.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Ingresos Var. Abs.')">Ingresos Var. Abs.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Activos Var. Rel.')">Activos Var. Rel.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Pasivos Var. Rel.')">Pasivos Var. Rel.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Patrimonio Var. Rel.')">Patrimonio Var. Rel.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Apalancamiento Var. Rel.')">Apalancamiento Var. Rel.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Endeudamiento Var. Rel.')">Endeudamiento Var. Rel.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('BancoSaldo Var. Rel.')">BancoSaldo Var. Rel.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Bienes Var. Rel.')">Bienes Var. Rel.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Inversiones Var. Rel.')">Inversiones Var. Rel.<span class="sort-icon">↕</span></button></th>
-                    <th><button onclick="quickFilter('Ingresos Var. Rel.')">Ingresos Var. Rel.<span class="sort-icon">↕</span></button></th>
+                    <th><button onclick="quickFilter('Nombre')">Nombre<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Año Declaración')">Año Declaración<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Compañía')">Compañía<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Cargo')">Cargo<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Usuario')">Usuario<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Activos')">Activos<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Pasivos')">Pasivos<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Patrimonio')">Patrimonio<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Apalancamiento')">Apalancamiento<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Endeudamiento')">Endeudamiento<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Cant_Deudas')">Cant_Deudas<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('BancoSaldo')">BancoSaldo<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Cant_Bancos')">Cant_Bancos<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Bienes')">Bienes<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Cant_Bienes')">Cant_Bienes<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Inversiones')">Inversiones<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Cant_Inversiones')">Cant_Inversiones<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Ingresos')">Ingresos<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Cant_Ingresos')">Cant_Ingresos<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Activos Var. Abs.')">Activos Var. Abs.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Pasivos Var. Abs.')">Pasivos Var. Abs.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Patrimonio Var. Abs.')">Patrimonio Var. Abs.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Apalancamiento Var. Abs.')">Apalancamiento Var. Abs.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Endeudamiento Var. Abs.')">Endeudamiento Var. Abs.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('BancoSaldo Var. Abs.')">BancoSaldo Var. Abs.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Bienes Var. Abs.')">Bienes Var. Abs.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Inversiones Var. Abs.')">Inversiones Var. Abs.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Ingresos Var. Abs.')">Ingresos Var. Abs.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Activos Var. Rel.')">Activos Var. Rel.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Pasivos Var. Rel.')">Pasivos Var. Rel.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Patrimonio Var. Rel.')">Patrimonio Var. Rel.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Apalancamiento Var. Rel.')">Apalancamiento Var. Rel.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Endeudamiento Var. Rel.')">Endeudamiento Var. Rel.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('BancoSaldo Var. Rel.')">BancoSaldo Var. Rel.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Bienes Var. Rel.')">Bienes Var. Rel.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Inversiones Var. Rel.')">Inversiones Var. Rel.<span class="sort-icon">📊</span></button></th>
+                    <th><button onclick="quickFilter('Ingresos Var. Rel.')">Ingresos Var. Rel.<span class="sort-icon">📊</span></button></th>
                     <th style="position: sticky; right: 0; background-color: #f8f9fa;">Acciones</th>
                 </tr>
             </thead>
@@ -3010,11 +3010,11 @@ function renderTable() {
         
         return `
             <tr>
-                <td style="position: sticky; left: 0; background-color: white; z-index: 2;">${item.Nombre || ''}</td>
-                <td style="position: sticky; left: 100px; background-color: white; z-index: 2;">${item['Año Declaración'] || ''}</td>
-                <td style="position: sticky; left: 150px; background-color: white; z-index: 2;">${item['Compañía'] || ''}</td>
-                <td style="position: sticky; left: 250px; background-color: white; z-index: 2;">${item.Cargo || ''}</td>
-                <td>${item.Usuario || ''}</td>
+                <td>${formatCell(item.Nombre)}</td>
+                <td>${formatCell(item['Año Declaración'])}</td>
+                <td>${formatCell(item['Compañía'])}</td>
+                <td>${formatCell(item.Cargo)}</td>
+                <td>${formatCell(item.Usuario)}</td>
                 <td>${formatCell(item.Activos)}</td>
                 <td>${formatCell(item.Pasivos)}</td>
                 <td>${formatCell(item.Patrimonio)}</td>
@@ -3444,16 +3444,16 @@ function showColumnStats(columnName) {
                             </div>
                             ${isNumeric ? `
                             <div class="stat-item">
+                                <strong>Promedio:</strong>
+                                <span>${formatNumber(stats.avg)}</span>
+                            </div>
+                            <div class="stat-item">
                                 <strong>Mínimo:</strong>
                                 <span>${formatNumber(stats.min)}</span>
                             </div>
                             <div class="stat-item">
                                 <strong>Máximo:</strong>
                                 <span>${formatNumber(stats.max)}</span>
-                            </div>
-                            <div class="stat-item">
-                                <strong>Promedio:</strong>
-                                <span>${formatNumber(stats.avg)}</span>
                             </div>
                             ` : ''}
                         </div>
