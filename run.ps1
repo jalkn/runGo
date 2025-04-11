@@ -1506,48 +1506,49 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
                     <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(34)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Bienes Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(34, this.value)"></th>
                     <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(35)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Inversiones Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(35, this.value)"></th>
                     <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(36)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Ingresos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(36, this.value)"></th>
+                    <th><div>📊</div></th>
                 </tr>
                 <tr>
                     <th>
-                        <button onclick="showColumnStats('Nombre')">Nombre 📊</button>
+                        <button onclick="showColumnStats('Nombre')">Nombre</button>
                     </th>
                 
-                    <th><button onclick="showColumnStats('Año Declaración')">Año Declaración 📊</button></th>
-                    <th><button onclick="showColumnStats('Compañía')">Compañía 📊</button></th>
-                    <th><button onclick="showColumnStats('Cargo')">Cargo 📊</button></th>
-                    <th><button onclick="showColumnStats('Usuario')">Usuario 📊</button></th>
-                    <th><button onclick="showColumnStats('Activos')">Activos 📊</button></th>
-                    <th><button onclick="showColumnStats('Pasivos')">Pasivos 📊</button></th>
-                    <th><button onclick="showColumnStats('Patrimonio')">Patrimonio 📊</button></th>
-                    <th><button onclick="showColumnStats('Apalancamiento')">Apalancamiento 📊</button></th>
-                    <th><button onclick="showColumnStats('Endeudamiento')">Endeudamiento 📊</button></th>
-                    <th><button onclick="showColumnStats('Cant_Deudas')">Cant_Deudas 📊</button></th>
-                    <th><button onclick="showColumnStats('BancoSaldo')">BancoSaldo 📊</button></th>
-                    <th><button onclick="showColumnStats('Cant_Bancos')">Cant_Bancos 📊</button></th>
-                    <th><button onclick="showColumnStats('Bienes')">Bienes 📊</button></th>
-                    <th><button onclick="showColumnStats('Cant_Bienes')">Cant_Bienes 📊</button></th>
-                    <th><button onclick="showColumnStats('Inversiones')">Inversiones 📊</button></th>
-                    <th><button onclick="showColumnStats('Cant_Inversiones')">Cant_Inversiones 📊</button></th>
-                    <th><button onclick="showColumnStats('Ingresos')">Ingresos 📊</button></th>
-                    <th><button onclick="showColumnStats('Cant_Ingresos')">Cant_Ingresos 📊</button></th>
-                    <th><button onclick="showColumnStats('Activos Var. Abs.')">Activos Var. Abs. 📊</button></th>
-                    <th><button onclick="showColumnStats('Pasivos Var. Abs.')">Pasivos Var. Abs. 📊</button></th>
-                    <th><button onclick="showColumnStats('Patrimonio Var. Abs.')">Patrimonio Var. Abs. 📊</button></th>
-                    <th><button onclick="showColumnStats('Apalancamiento Var. Abs.')">Apalancamiento Var. Abs. 📊</button></th>
-                    <th><button onclick="showColumnStats('Endeudamiento Var. Abs.')">Endeudamiento Var. Abs. 📊</button></th>
-                    <th><button onclick="showColumnStats('BancoSaldo Var. Abs.')">BancoSaldo Var. Abs. 📊</button></th>
-                    <th><button onclick="showColumnStats('Bienes Var. Abs.')">Bienes Var. Abs. 📊</button></th>
-                    <th><button onclick="showColumnStats('Inversiones Var. Abs.')">Inversiones Var. Abs. 📊</button></th>
-                    <th><button onclick="showColumnStats('Ingresos Var. Abs.')">Ingresos Var. Abs. 📊</button></th>
-                    <th><button onclick="showColumnStats('Activos Var. Rel.')">Activos Var. Rel. 📊</button></th>
-                    <th><button onclick="showColumnStats('Pasivos Var. Rel.')">Pasivos Var. Rel. 📊</button></th>
-                    <th><button onclick="showColumnStats('Patrimonio Var. Rel.')">Patrimonio Var. Rel. 📊</button></th>
-                    <th><button onclick="showColumnStats('Apalancamiento Var. Rel.')">Apalancamiento Var. Rel. 📊</button></th>
-                    <th><button onclick="showColumnStats('Endeudamiento Var. Rel.')">Endeudamiento Var. Rel. 📊</button></th>
-                    <th><button onclick="showColumnStats('BancoSaldo Var. Rel.')">BancoSaldo Var. Rel. 📊</button></th>
-                    <th><button onclick="showColumnStats('Bienes Var. Rel.')">Bienes Var. Rel. 📊</button></th>
-                    <th><button onclick="showColumnStats('Inversiones Var. Rel.')">Inversiones Var. Rel. 📊</button></th>
-                    <th><button onclick="showColumnStats('Ingresos Var. Rel.')">Ingresos Var. Rel. 📊</button></th>
+                    <th><button onclick="showColumnStats('Año Declaración')">Año Declaración</button></th>
+                    <th><button onclick="showColumnStats('Compañía')">Compañía</button></th>
+                    <th><button onclick="showColumnStats('Cargo')">Cargo</button></th>
+                    <th><button onclick="showColumnStats('Usuario')">Usuario</button></th>
+                    <th><button onclick="showColumnStats('Activos')">Activos</button></th>
+                    <th><button onclick="showColumnStats('Pasivos')">Pasivos</button></th>
+                    <th><button onclick="showColumnStats('Patrimonio')">Patrimonio</button></th>
+                    <th><button onclick="showColumnStats('Apalancamiento')">Apalancamiento</button></th>
+                    <th><button onclick="showColumnStats('Endeudamiento')">Endeudamiento</button></th>
+                    <th><button onclick="showColumnStats('Cant_Deudas')">Cant_Deudas</button></th>
+                    <th><button onclick="showColumnStats('BancoSaldo')">BancoSaldo</button></th>
+                    <th><button onclick="showColumnStats('Cant_Bancos')">Cant_Bancos</button></th>
+                    <th><button onclick="showColumnStats('Bienes')">Bienes</button></th>
+                    <th><button onclick="showColumnStats('Cant_Bienes')">Cant_Bienes</button></th>
+                    <th><button onclick="showColumnStats('Inversiones')">Inversiones</button></th>
+                    <th><button onclick="showColumnStats('Cant_Inversiones')">Cant_Inversiones</button></th>
+                    <th><button onclick="showColumnStats('Ingresos')">Ingresos</button></th>
+                    <th><button onclick="showColumnStats('Cant_Ingresos')">Cant_Ingresos</button></th>
+                    <th><button onclick="showColumnStats('Activos Var. Abs.')">Activos Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Pasivos Var. Abs.')">Pasivos Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Patrimonio Var. Abs.')">Patrimonio Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Apalancamiento Var. Abs.')">Apalancamiento Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Endeudamiento Var. Abs.')">Endeudamiento Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('BancoSaldo Var. Abs.')">BancoSaldo Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Bienes Var. Abs.')">Bienes Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Inversiones Var. Abs.')">Inversiones Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Ingresos Var. Abs.')">Ingresos Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Activos Var. Rel.')">Activos Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Pasivos Var. Rel.')">Pasivos Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Patrimonio Var. Rel.')">Patrimonio Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Apalancamiento Var. Rel.')">Apalancamiento Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Endeudamiento Var. Rel.')">Endeudamiento Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('BancoSaldo Var. Rel.')">BancoSaldo Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Bienes Var. Rel.')">Bienes Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Inversiones Var. Rel.')">Inversiones Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Ingresos Var. Rel.')">Ingresos Var. Rel.</button></th>
                     <th><span class="glyphicon">&#xe185;</span></th></th>
                 </tr>
             </thead>
@@ -1570,20 +1571,24 @@ Write-Host "🏗️ Creating CSS" -ForegroundColor $YELLOW
     # css
     Set-Content -Path "static/style.css" -Value @"
 @import url('https://fonts.googleapis.com/css2?family=Open+Sans&display=swap');
+
 * {
     font-family: 'Open Sans', sans-serif;
     box-sizing: border-box;
 }
+
 body {
     margin: 0;
     padding: 20px;
     background-color: #f8f9fa;
 }
+
 .topnav-container {
     display: flex;
     align-items: center;
     margin-bottom: 20px;
 }
+
 .logoIN {
     cursor: pointer;
     width: 40px;
@@ -1593,6 +1598,7 @@ body {
     display: inline-flex;
     position: relative;
 }
+
 .logoIN::before {
     content: "";
     width: 40px;
@@ -1608,52 +1614,70 @@ body {
         #ffffff 2px, transparent 1.5px);
     background-size: 4px 100%; 
 }
+
 .nomPag {
     margin-left: 10px;
     color: #0b00a2;
     font-weight: bold;
     font-size: 1rem;
 }
+
 h1 {
     color: #333;
     margin-top: 0;
 }
-.filter-form {
+
+.filter-form, .predetermined-filters {
     background: white;
     padding: 15px;
     border-radius: 8px;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     margin-bottom: 20px;
+}
+
+.filter-form {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     gap: 10px;
 }
+
 .filter-form select, 
 .filter-form input, 
-.filter-form button {
+.filter-form button,
+.password-input {
     padding: 8px 12px;
     border: 1px solid #ddd;
     border-radius: 4px;
     transition: all 0.3s;
 }
-.filter-form button {
+
+.filter-form button, 
+.apply-filter-btn {
     background-color: #0b00a2;
     color: white;
     border: none;
     cursor: pointer;
 }
-.filter-form button:hover {
+
+.filter-form button:hover, 
+.apply-filter-btn:hover {
     background-color: #09007a;
 }
+
 .filter-form select:focus, 
-.filter-form select.highlighted {
+.filter-form select.highlighted,
+.password-input:focus {
     border: 2px solid #0b00a2;
     background-color: #f0f5ff;
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(11, 0, 162, 0.2);
 }
+
 #filters {
     margin-bottom: 20px;
 }
+
 .filter-tag {
     display: inline-block;
     background: #e9ecef;
@@ -1662,6 +1686,7 @@ h1 {
     margin-right: 10px;
     margin-bottom: 10px;
 }
+
 .filter-tag button {
     background: none;
     border: none;
@@ -1669,18 +1694,8 @@ h1 {
     margin-left: 5px;
     cursor: pointer;
 }
-.predetermined-filters {
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    margin-bottom: 20px;
-}
-.predetermined-filters label {
-    display: block;
-    margin-bottom: 8px;
-    cursor: pointer;
-}
+
+/* Table container */
 .table-scroll-container {
     position: relative;
     height: calc(100vh - 300px);
@@ -1691,44 +1706,73 @@ h1 {
     background: white;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
+
+/* Table structure */
 #results {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0;
     min-width: 1200px;
     background: white;
 }
-#results th, #results td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #ddd;
-    white-space: nowrap;
-}
+
+/* Header rows */
 #results thead {
     position: sticky;
     top: 0;
-    z-index: 10;
+    z-index: 1000;
+}
+
+/* Column controls row (first header row) */
+.column-controls {
+    position: sticky;
+    top: 0;
+    z-index: 1010;
     background-color: #f8f9fa;
 }
+
+/* Regular headers (second header row) */
+#results thead tr:not(.column-controls) {
+    position: sticky;
+    top: 40px;
+    z-index: 1000;
+    background-color: #f8f9fa;
+}
+
+/* Frozen columns */
+.frozen-column {
+    position: sticky;
+    background-color: white;
+    z-index: 20;
+}
+
+/* Frozen column controls need highest priority */
+.column-controls th.frozen-column {
+    z-index: 1030 !important;
+}
+
 #results th {
     position: sticky;
     top: 0;
     background-color: #f8f9fa;
 }
-#results tr:hover {
-    background-color: #f1f1f1;
-}
+
+#results tr:hover, 
 #results tr:hover td {
     background-color: #f1f1f1;
 }
+
 #results td:last-child {
     position: sticky;
     right: 0;
     z-index: 5;
     background-color: white;
 }
+
 #results tr:hover td:last-child {
     background-color: #f1f1f1;
 }
+
 #results th button {
     padding: 12px;
     background: none;
@@ -1748,7 +1792,9 @@ h1 {
     opacity: 0.5;
 }
 
-#results th button:hover .sort-icon {
+#results th button:hover .sort-icon,
+#results th.sorted-asc button .sort-icon,
+#results th.sorted-desc button .sort-icon {
     opacity: 1;
 }
 
@@ -1758,13 +1804,8 @@ h1 {
     font-weight: bold;
 }
 
-#results th.sorted-asc button .sort-icon,
-#results th.sorted-desc button .sort-icon {
-    opacity: 1;
-}
-
-.glyphicon {
-    font-size: 25px; /* Or larger, adjust as needed */
+.glyphicon, .trend-icon {
+    font-size: 25px;
     position: sticky; 
     color: #bcbcbc;
     margin-bottom: 0;
@@ -1778,12 +1819,14 @@ h1 {
     font-size: 1.2em;
     margin-left: 3px;
 }
+
 .loading {
     text-align: center;
     padding: 20px;
     font-style: italic;
     color: #6c757d;
 }
+
 .highlighted-column {
     background-color: #f0f5ff !important;
     font-weight: bold;
@@ -1802,6 +1845,7 @@ h1 {
     align-items: center;
     z-index: 1000;
 }
+
 .modal-content {
     background: white;
     padding: 20px;
@@ -1812,6 +1856,7 @@ h1 {
     overflow-y: auto;
     box-shadow: 0 4px 8px rgba(0,0,0,0.2);
 }
+
 .modal-header {
     display: flex;
     justify-content: space-between;
@@ -1820,6 +1865,7 @@ h1 {
     padding-bottom: 10px;
     border-bottom: 1px solid #eee;
 }
+
 .close-button {
     background: none;
     border: none;
@@ -1827,48 +1873,65 @@ h1 {
     cursor: pointer;
     color: #666;
 }
+
 .detail-section {
     margin-bottom: 25px;
     padding-bottom: 15px;
     border-bottom: 1px solid #f0f0f0;
 }
+
 .detail-section:last-child {
     border-bottom: none;
 }
-.detail-grid, .variation-grid {
+
+.detail-grid, 
+.variation-grid,
+.stats-grid {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
     gap: 12px;
 }
-.detail-item, .variation-item {
+
+.detail-item, 
+.variation-item,
+.stat-item {
     padding: 8px;
     background: #f9f9f9;
     border-radius: 4px;
 }
-.detail-item strong, .variation-item strong {
+
+.detail-item strong, 
+.variation-item strong,
+.stat-item strong {
     color: #333;
 }
+
 .modal-body {
     display: flex;
     flex-direction: column;
     gap: 20px;
 }
-.detail-section h3 {
+
+.detail-section h3,
+.common-values-section h3 {
     margin-top: 0;
     color: #0b00a2;
     border-bottom: 1px solid #dee2e6;
     padding-bottom: 8px;
 }
+
 .variation-item {
     border-left: 3px solid #0b00a2;
 }
+
 .filter-buttons {
     display: flex;
     gap: 8px;
     flex-wrap: wrap;
 }
 
-.filter-buttons button {
+.filter-buttons button,
+.action-btn {
     background-color: #e9ecef;
     color: #495057;
     border: 1px solid #ced4da;
@@ -1879,7 +1942,8 @@ h1 {
     transition: all 0.2s;
 }
 
-.filter-buttons button:hover {
+.filter-buttons button:hover,
+.action-btn:hover {
     background-color: #dee2e6;
 }
 
@@ -1918,21 +1982,15 @@ h1 {
 #passwordContainer {
     display: flex;
     flex-direction: row;
-    gap: 15px; 
-    align-items: center; 
+    gap: 15px;
+    align-items: center;
+    width: 100%;
 }
 
 .password-input-group {
     position: relative;
-    min-width: 0; /* Important for flex items */
-}
-
-.password-input {
-    padding: 8px 35px 8px 12px;
-    width: 100%;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    box-sizing: border-box;
+    min-width: 0;
+    flex: 1;
 }
 
 .toggle-password {
@@ -1941,12 +1999,6 @@ h1 {
     top: 50%;
     transform: translateY(-50%);
     cursor: pointer;
-}
-
-.password-input:focus {
-    border-color: #0b00a2;
-    outline: none;
-    box-shadow: 0 0 0 2px rgba(11, 0, 162, 0.2);
 }
 
 .toggle-password:hover {
@@ -1967,7 +2019,6 @@ h1 {
     transition: width 0.3s, background-color 0.3s;
 }
 
-
 @keyframes shake {
     0%, 100% { transform: translateX(0); }
     20%, 60% { transform: translateX(-5px); }
@@ -1978,82 +2029,60 @@ h1 {
     animation: shake 0.6s;
 }
 
-
-#excelPassword {
-padding: 8px;
-margin: 5px 0;
-width: 100%;
-max-width: 300px;
-border: 1px solid #ddd;
-border-radius: 4px;
-}
-
 /* File Upload Styles */
 .file-upload-container {
     margin: 10px 0;
-  }
-  
+}
+
 .file-upload-label {
-display: inline-block;
-cursor: pointer;
+    display: inline-block;
+    cursor: pointer;
 }
 
 .file-upload-button {
-display: inline-block;
-padding: 8px 12px;
-background-color:rgb(0, 176, 15);
-color: white;
-border-radius: 4px;
-transition: background-color 0.3s;
+    display: inline-block;
+    padding: 8px 12px;
+    background-color: rgb(0, 176, 15);
+    color: white;
+    border-radius: 4px;
+    transition: background-color 0.3s;
 }
 
 .file-upload-button:hover {
-background-color: #09007a;
+    background-color: #09007a;
 }
 
 .file-upload-input {
-position: absolute;
-width: 1px;
-height: 1px;
-padding: 0;
-margin: -1px;
-overflow: hidden;
-clip: rect(0, 0, 0, 0);
-border: 0;
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    padding: 0;
+    margin: -1px;
+    overflow: hidden;
+    clip: rect(0, 0, 0, 0);
+    border: 0;
 }
 
 .file-upload-help {
-display: block;
-font-size: 0.8rem;
-color: #666;
-margin-top: 4px;
+    display: block;
+    font-size: 0.8rem;
+    color: #666;
+    margin-top: 4px;
 }
 
 .file-upload-status {
-display: block;
-margin-top: 4px;
-font-size: 0.9rem;
+    display: block;
+    margin-top: 4px;
+    font-size: 0.9rem;
 }
 
 /* Column Stats Modal Styles */
 .stats-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-    gap: 15px;
     margin-bottom: 20px;
 }
 
 .stat-item {
-    background: #f8f9fa;
-    padding: 12px;
-    border-radius: 6px;
     border-left: 4px solid #0b00a2;
-}
-
-.stat-item strong {
-    display: block;
-    margin-bottom: 5px;
-    color: #333;
 }
 
 .stat-item span {
@@ -2064,13 +2093,6 @@ font-size: 0.9rem;
 
 .common-values-section {
     margin: 25px 0;
-}
-
-.common-values-section h3 {
-    margin-top: 0;
-    color: #0b00a2;
-    border-bottom: 1px solid #dee2e6;
-    padding-bottom: 8px;
 }
 
 .common-values-grid {
@@ -2100,20 +2122,6 @@ font-size: 0.9rem;
     margin: 0 15px;
 }
 
-.apply-filter-btn {
-    background: #0b00a2;
-    color: white;
-    border: none;
-    padding: 5px 10px;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 0.8rem;
-}
-
-.apply-filter-btn:hover {
-    background: #09007a;
-}
-
 .quick-filter-actions {
     display: flex;
     gap: 10px;
@@ -2122,17 +2130,7 @@ font-size: 0.9rem;
 }
 
 .action-btn {
-    background: #e9ecef;
-    color: #495057;
-    border: 1px solid #ced4da;
     padding: 8px 12px;
-    border-radius: 4px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.action-btn:hover {
-    background: #dee2e6;
 }
 
 .action-btn:disabled {
@@ -2222,10 +2220,6 @@ font-size: 0.9rem;
     padding-right: 15px;
 }
 
-.value-item .apply-filter-btn {
-    flex-shrink: 0;
-}
-
 .values-pagination {
     display: flex;
     justify-content: center;
@@ -2270,7 +2264,7 @@ font-size: 0.9rem;
     cursor: pointer;
     font-size: 14px;
     padding: 2px;
-    color: #bcbcbc; /* Default color */
+    color: #bcbcbc;
 }
 
 .freeze-btn:hover {
@@ -2279,28 +2273,32 @@ font-size: 0.9rem;
 
 .freeze-btn.active, 
 .freeze-btn.active .glyphicon {
-    color: #ff0000 !important; /* Force color change */
+    color: #ff0000 !important;
 }
 
 .width-slider {
     width: 80px;
 }
 
-/* Frozen columns styling */
-.frozen-column {
-    position: sticky;
-    background-color: white;
-    z-index: 20;
-}
-
 /* Headers need higher z-index */
 #results thead th.frozen-column {
-    z-index: 30;
-    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+    z-index: 120;
 }
 
 /* Body cells */
 #results tbody td.frozen-column {
+    z-index: 10;
+}
+
+/* Special styling for the column controls row */
+.column-controls th.frozen-column {
+    z-index: 130 !important;
+}
+
+/* Ensure the slider stays with the column */
+.width-slider {
+    position: sticky;
+    left: 0;
     z-index: 10;
 }
 
@@ -2313,19 +2311,23 @@ font-size: 0.9rem;
 @media (max-width: 768px) {
     .filter-form select, 
     .filter-form input, 
-    .filter-form button {
+    .filter-form button,
+    #analyzeButton {
         width: 100%;
         margin-right: 0;
     }
+    
     #results thead {
         display: none;
     }
+    
     #results tr {
         display: block;
         margin-bottom: 15px;
         border: 1px solid #ddd;
         border-radius: 8px;
     }
+    
     #results td {
         display: flex;
         justify-content: space-between;
@@ -2334,25 +2336,28 @@ font-size: 0.9rem;
         padding-left: 50%;
         position: relative;
     }
+    
     #results td::before {
         content: attr(data-label);
         position: absolute;
         left: 12px;
         font-weight: bold;
     }
-    .detail-grid, .variation-grid {
+    
+    .detail-grid, 
+    .variation-grid,
+    .stats-grid {
         grid-template-columns: 1fr;
     }
-
+    
     #passwordContainer {
-        width:100%;
-     }
-     .password-input {
-         width: 100%;
-     }
-     #analyzeButton {
-         width: 100%; /* Button takes full width on smaller screens */
-     }
+        flex-direction: column;
+        gap: 10px;
+    }
+    
+    .password-input-group {
+        width: 100%;
+    }
 }
 "@
 
@@ -3211,9 +3216,10 @@ function toggleFreezeColumn(columnIndex) {
         // Freeze
         frozenColumns.push(columnIndex);
         frozenColumns.sort((a, b) => a - b); // Keep in order
-        updateFrozenColumns();
         freezeBtn.classList.add('active');
     }
+    
+    updateFrozenColumns();
     
     // Force a reflow to ensure proper rendering
     document.querySelector('.table-scroll-container').style.overflow = 'hidden';
@@ -3227,12 +3233,16 @@ function updateFrozenColumns() {
         el.classList.remove('frozen-column');
         el.style.left = '';
     });
-    
+
     // Calculate cumulative left positions
     let leftPosition = 0;
     
     frozenColumns.forEach((colIndex, i) => {
-        const columnCells = document.querySelectorAll(`#results tr > *:nth-child(${colIndex + 1})`);
+        const columnCells = document.querySelectorAll(`
+            #results thead th:nth-child(${colIndex + 1}),
+            #results tbody td:nth-child(${colIndex + 1})
+        `);
+        
         const firstCell = columnCells[0];
         const columnWidth = firstCell.offsetWidth;
         
@@ -3240,9 +3250,13 @@ function updateFrozenColumns() {
             cell.classList.add('frozen-column');
             cell.style.left = `${leftPosition}px`;
             
-            // Add higher z-index to header cells
+            // Set z-index based on cell type
             if (cell.tagName === 'TH') {
-                cell.style.zIndex = '30';
+                if (cell.parentElement.classList.contains('column-controls')) {
+                    cell.style.zIndex = '1030';
+                } else {
+                    cell.style.zIndex = '1020';
+                }
             } else {
                 cell.style.zIndex = '10';
             }
@@ -3251,10 +3265,14 @@ function updateFrozenColumns() {
         leftPosition += columnWidth;
     });
     
-    // Ensure the table header stays above body cells
-    document.querySelectorAll('#results thead th').forEach(th => {
-        th.style.zIndex = '20';
-    });
+    // Adjust the top position of the second header row
+    const controlsRow = document.querySelector('.column-controls');
+    const secondHeaderRow = document.querySelector('#results thead tr:not(.column-controls)');
+    
+    if (controlsRow && secondHeaderRow) {
+        const controlsHeight = controlsRow.offsetHeight;
+        secondHeaderRow.style.top = `${controlsHeight}px`;
+    }
 }
 
 // View detailed record
@@ -3488,6 +3506,17 @@ function resizeColumn(columnIndex, width) {
     if (frozenColumns.includes(columnIndex)) {
         updateFrozenColumns();
     }
+}
+
+// Add this to your setup code
+const resizeObserver = new ResizeObserver(() => {
+    updateFrozenColumns();
+});
+
+// Observe the controls row
+const controlsRow = document.querySelector('.column-controls');
+if (controlsRow) {
+    resizeObserver.observe(controlsRow);
 }
 
 function quickFilter(columnName) {
@@ -3821,6 +3850,26 @@ function exportDetailsToExcel() {
     // Export to file
     XLSX.writeFile(workbook, fileName);
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    // Set initial header positions
+    const controlsRow = document.querySelector('.column-controls');
+    const secondHeaderRow = document.querySelector('#results thead tr:not(.column-controls)');
+    
+    if (controlsRow && secondHeaderRow) {
+        const controlsHeight = controlsRow.offsetHeight;
+        secondHeaderRow.style.top = `${controlsHeight}px`;
+    }
+    
+    // Add resize observer
+    const resizeObserver = new ResizeObserver(() => {
+        updateFrozenColumns();
+    });
+    
+    if (controlsRow) {
+        resizeObserver.observe(controlsRow);
+    }
+});
 
 // Export to Excel
 function exportToExcel() {
