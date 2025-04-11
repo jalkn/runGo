@@ -1,6 +1,6 @@
 # r u n G O
 
-This repository contains the scripts and filters to analyze a financial historical data.
+Software to analyze a financial historical data.
 
 ## 1. Preparation
 

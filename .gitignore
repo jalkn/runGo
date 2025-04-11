@@ -18,8 +18,6 @@ toICO.py
 favicon.ico
 arpy.spec
 build.ps1
-dist/
-arpy.py
 build/
 favicon.png
 script.js
