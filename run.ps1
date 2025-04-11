@@ -1317,6 +1317,8 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     <title>A R P A</title>
     <link rel="stylesheet" href="static/style.css">
     <link rel="shortcut icon" href="favicon.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 <body>
     <div class="topnav-container">
@@ -1364,7 +1366,7 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
         <div id="loadingBar"></div>
         <div id="loadingText">Analizando archivo...</div>
     </div>
-
+    <!-- SheetJS for Excel export 
     <div class="filter-form">
         <div class="filter-buttons">
             <button onclick="applyPredeterminedFilter('Patrimonio', '>', '3000000000')">Patrimonio > ,000M</button>
@@ -1375,7 +1377,7 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
             <button onclick="applyPredeterminedFilter('Cant_Deudas', '>=', '5')">Cant. Deudas ≥ 5</button>
             <button onclick="applyPredeterminedFilter('Cant_Bienes', '>=', '6')">Cant. Bienes ≥ 6</button>
         </div> 
-    </div>
+    </div>-->
     <div class="filter-form">
         <select id="column" aria-label="Seleccionar columna para filtrar" title="Columna para filtrar">
             <option value="">-- Selecciona columna --</option>
@@ -1443,10 +1445,11 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
         <button onclick="clearFilters()" style="background-color: #dc3545; color: white;">Limpiar Filtros</button>
         
         <div style="margin-left: auto; background-color:rgb(0, 176, 15);">
+            <button onclick="changeDataSource()">Estado</button>
             <select id="dataSource" aria-label="Seleccionar fuente de datos" title="Fuente de datos">
-                <option value="src/data.json">Tendencias</option>
-                <option value="src/fk1Data.json">Datos FK1</option>
-            </select><button onclick="changeDataSource()">Cambiar Tabla</button>
+                <option value="src/data.json">Completo</option>
+                <option value="src/fk1Data.json">Incompleto</option>
+            </select>
         </div>
     </div>
     
@@ -1455,6 +1458,50 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     <div class="table-scroll-container">
         <table id="results">
             <thead>
+                <tr class="column-controls">
+                    <!-- Add freeze/resize buttons for each column -->
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(0)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(0, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(1)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(1, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(2)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(2, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(3)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(3, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(4)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(4, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(5)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(5, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(6)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(6, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(7)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(7, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(8)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(8, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(9)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(9, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(10)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(10, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(11)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(11, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(12)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(12, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(13)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(13, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(14)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(14, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(15)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(15, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(16)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(16, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(17)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(17, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(18)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(18, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(19)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(19, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(20)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(20, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(21)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(21, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(22)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(22, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(23)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(23, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(24)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(24, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(25)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(25, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(26)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(26, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(27)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(27, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(28)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(28, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(29)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(29, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(30)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(30, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(31)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(31, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(32)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(32, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(33)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(33, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(34)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(34, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(35)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(35, this.value)"></div></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(36)"><i class="glyphicon glyphicon-stop" style="font-size:18px;"></i></button><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(36, this.value)"></div></th>
+                    <th><div class="logoIN"></div></th>
+                    
+
+
+                </tr>
                 <tr>
                     <th><button onclick="quickFilter('Nombre')">Nombre<span class="sort-icon">📊</span></button></th>
                     <th><button onclick="quickFilter('Año Declaración')">Año Declaración<span class="sort-icon">📊</span></button></th>
@@ -1493,7 +1540,7 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
                     <th><button onclick="quickFilter('Bienes Var. Rel.')">Bienes Var. Rel.<span class="sort-icon">📊</span></button></th>
                     <th><button onclick="quickFilter('Inversiones Var. Rel.')">Inversiones Var. Rel.<span class="sort-icon">📊</span></button></th>
                     <th><button onclick="quickFilter('Ingresos Var. Rel.')">Ingresos Var. Rel.<span class="sort-icon">📊</span></button></th>
-                    <th style="position: sticky; right: 0; background-color: #f8f9fa;">Acciones</th>
+                    <th><span class="glyphicon">&#xe185;</span></th></th>
                 </tr>
             </thead>
             <tbody>
@@ -1705,6 +1752,17 @@ h1 {
 #results th.sorted-asc button .sort-icon,
 #results th.sorted-desc button .sort-icon {
     opacity: 1;
+}
+
+.glyphicon {
+    font-size: 25px; /* Or larger, adjust as needed */
+    position: sticky; 
+    color: #bcbcbc;
+    margin-bottom: 0;
+}
+
+.glyphicon:hover {
+    color: #1e00ff;
 }
 
 .trend-icon {
@@ -2184,6 +2242,57 @@ font-size: 0.9rem;
     background: #e9ecef;
 }
 
+/* Column controls styling */
+.column-controls th {
+    padding: 5px !important;
+    height: 40px;
+    vertical-align: middle;
+}
+
+.column-controls-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 5px;
+}
+
+.freeze-btn {
+    background: none;
+    border: none;
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px;
+    color: #bcbcbc; /* Default color */
+}
+
+.freeze-btn:hover {
+    color: #0b00a2;
+}
+
+.freeze-btn.active, 
+.freeze-btn.active .glyphicon {
+    color: #ff0000 !important; /* Force color change */
+}
+
+.width-slider {
+    width: 80px;
+}
+
+/* Frozen columns styling */
+.frozen-column {
+    position: sticky;
+    left: 0;
+    background-color: white;
+    z-index: 20;
+    box-shadow: 2px 0 5px rgba(0,0,0,0.1);
+}
+
+/* Adjust for multiple frozen columns */
+.frozen-column ~ .frozen-column {
+    left: auto;
+    box-shadow: none;
+}
+
 @media (max-width: 768px) {
     .filter-form select, 
     .filter-form input, 
@@ -2244,6 +2353,7 @@ let processingData = false;
 const filters = [];
 let currentDataSource = 'src/data.json';
 let selectedFile = null;
+let frozenColumns = [];
 
 // DOM elements
 const operatorSelect = document.getElementById('operator');
@@ -3048,7 +3158,8 @@ function renderTable() {
                 <td>${formatCell(item['Inversiones Var. Rel.'], true)}</td>
                 <td>${formatCell(item['Ingresos Var. Rel.'], true)}</td>
                 <td style="position: sticky; right: 0; background-color: white;">
-                    <button onclick="viewDetails('${item.Usuario}', ${item['Año Declaración']})" style="background-color: #0b00a2; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;">Detalles</button>
+                    <button onclick="viewDetails('${item.Usuario}', ${item['Año Declaración']})" style="background-color: #0b00a2; color: white; border: none; padding: 5px 10px; border-radius: 4px; cursor: pointer;
+                    ">Ver</button>
                 </td>
             </tr>
         `;
@@ -3056,6 +3167,67 @@ function renderTable() {
 
     // Scroll to top after rendering
     document.querySelector('.table-scroll-container').scrollTop = 0;
+}
+
+// Track frozen columns
+
+function toggleFreezeColumn(columnIndex) {
+    const columnCells = document.querySelectorAll(`#results tr > *:nth-child(${columnIndex + 1})`);
+    const freezeBtn = document.querySelector(`.column-controls th:nth-child(${columnIndex + 1}) .freeze-btn`);
+    
+    if (frozenColumns.includes(columnIndex)) {
+        // Unfreeze
+        frozenColumns = frozenColumns.filter(col => col !== columnIndex);
+        columnCells.forEach(cell => cell.classList.remove('frozen-column'));
+        freezeBtn.classList.remove('active');
+    } else {
+        // Freeze
+        frozenColumns.push(columnIndex);
+        frozenColumns.sort((a, b) => a - b); // Keep in order
+        updateFrozenColumns();
+        freezeBtn.classList.add('active');
+    }
+}
+
+function updateFrozenColumns() {
+    // First remove all frozen classes
+    document.querySelectorAll('.frozen-column').forEach(el => {
+        el.classList.remove('frozen-column');
+    });
+    
+    // Calculate cumulative left positions
+    let leftPosition = 0;
+    
+    frozenColumns.forEach((colIndex, i) => {
+        const columnCells = document.querySelectorAll(`#results tr > *:nth-child(${colIndex + 1})`);
+        const firstCell = columnCells[0];
+        const columnWidth = firstCell.offsetWidth;
+        
+        columnCells.forEach(cell => {
+            cell.classList.add('frozen-column');
+            if (i > 0) {
+                cell.style.left = `${leftPosition}px`;
+            } else {
+                cell.style.left = '0';
+            }
+        });
+        
+        leftPosition += columnWidth;
+    });
+}
+
+function resizeColumn(columnIndex, width) {
+    const columnCells = document.querySelectorAll(`#results tr > *:nth-child(${columnIndex + 1})`);
+    columnCells.forEach(cell => {
+        cell.style.width = `${width}px`;
+        cell.style.minWidth = `${width}px`;
+        cell.style.maxWidth = `${width}px`;
+    });
+    
+    // Update frozen columns positions if this column is frozen
+    if (frozenColumns.includes(columnIndex)) {
+        updateFrozenColumns();
+    }
 }
 
 // View detailed record
