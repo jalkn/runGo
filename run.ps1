@@ -1506,7 +1506,6 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
                     <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(34)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Bienes Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(34, this.value)"></th>
                     <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(35)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Inversiones Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(35, this.value)"></th>
                     <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(36)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Ingresos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(36, this.value)"></th>
-                    <th><div>📊</div></th>
                 </tr>
                 <tr>
                     <th>
@@ -1549,7 +1548,7 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
                     <th><button onclick="showColumnStats('Bienes Var. Rel.')">Bienes Var. Rel.</button></th>
                     <th><button onclick="showColumnStats('Inversiones Var. Rel.')">Inversiones Var. Rel.</button></th>
                     <th><button onclick="showColumnStats('Ingresos Var. Rel.')">Ingresos Var. Rel.</button></th>
-                    <th><span class="glyphicon">&#xe185;</span></th></th>
+                    <th><button onclick="showColumnStats('')"><span class="glyphicon">&#xe185;</span></button></th>
                 </tr>
             </thead>
             <tbody>
