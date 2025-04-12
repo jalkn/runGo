@@ -8,9 +8,7 @@ tables/
 models/
 .DS_store
 test/
-index.html
 arpa/
-static/
 app.py
 dataHistoricaPBI.xlsx
 django/

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A R P A</title>
+    <link rel="stylesheet" href="static/style.css">
+    <link rel="shortcut icon" href="favicon.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+<body>
+    <div class="topnav-container">
+        <div class="logoIN"></div>
+        <div class="nomPag">A R P A</div>
+    </div>
+    
+    <h1>Bienes y Rentas</h1>
+    <div class="filter-form">
+        <label for="excelUpload" class="file-upload-label">
+          <span class="file-upload-button">Cargar archivo Excel</span>
+          <input type="file" 
+                 id="excelUpload" 
+                 accept=".xlsx,.xls" 
+                 aria-describedby="fileUploadHelp"
+                 class="file-upload-input">
+        </label>
+        <span id="fileUploadStatus" aria-live="polite" class="file-upload-status"></span>
+        
+            <div id="passwordContainer" style="display: none;">
+                <div style="display: flex; gap: 15px; width: 100%;">
+                    <div class="password-input-group" style="flex: 1;">
+                        <input type="password" 
+                            id="excelOpenPassword" 
+                            placeholder="Contraseña de apertura"
+                            class="password-input">
+                        <span class="toggle-password" onclick="togglePassword('excelOpenPassword')">👁️</span>
+                    </div>
+                    <div class="password-input-group" style="flex: 1;">
+                        <input type="password" 
+                            id="excelModifyPassword" 
+                            placeholder="Contraseña de modificación"
+                            class="password-input">
+                        <span class="toggle-password" onclick="togglePassword('excelModifyPassword')">👁️</span>
+                    </div><button id="analyzeButton">Analizar Archivo</button>
+                </div>
+            </div>
+        
+        
+        <button onclick="exportToExcel()" style="margin-left: auto; background-color:rgb(0, 176, 15);">Exportar a Excel</button>
+        <div id="passwordError" class="error-message"></div>
+    </div>
+
+    <div id="loadingBarContainer" style="display: none;">
+        <div id="loadingBar"></div>
+        <div id="loadingText">Analizando archivo...</div>
+    </div>
+    <!-- SheetJS for Excel export 
+    <div class="filter-form">
+        <div class="filter-buttons">
+            <button onclick="applyPredeterminedFilter('Patrimonio', '>', '3000000000')">Patrimonio > ,000M</button>
+            <button onclick="applyPredeterminedFilter('Patrimonio Var. Rel.', '>', '30')">Patrimonio Var. Rel. > 30%</button>
+            <button onclick="applyPredeterminedFilter('Cant_Bienes', '<', '0')">Cant. Bienes < 0</button>
+            <button onclick="applyPredeterminedFilter('Endeudamiento Var. Rel.', '>', '50')">Endeudamiento Var. Rel. > 50%</button>
+            <button onclick="applyPredeterminedFilter('Ingresos', '>', '50000000')">Ingresos > </button>
+            <button onclick="applyPredeterminedFilter('Cant_Deudas', '>=', '5')">Cant. Deudas ≥ 5</button>
+            <button onclick="applyPredeterminedFilter('Cant_Bienes', '>=', '6')">Cant. Bienes ≥ 6</button>
+        </div> 
+    </div>-->
+    <div class="filter-form">
+        <select id="column" aria-label="Seleccionar columna para filtrar" title="Columna para filtrar">
+            <option value="">-- Selecciona columna --</option>
+            <optgroup label="Información Personal">
+                <option value="Nombre">Nombre</option>
+                <option value="Año Declaración">Año Declaración</option>
+                <option value="Compañía">Compañía</option>
+                <option value="Cargo">Cargo</option>
+                <option value="Usuario">Usuario</option>
+            </optgroup>
+            <optgroup label="Valores Principales">
+                <option value="Activos">Activos</option>
+                <option value="Pasivos">Pasivos</option>
+                <option value="Patrimonio">Patrimonio</option>
+                <option value="Apalancamiento">Apalancamiento</option>
+                <option value="Endeudamiento">Endeudamiento</option>
+                <option value="Cant_Deudas">Cant. Deudas</option>
+                <option value="BancoSaldo">Saldo Bancario</option>
+                <option value="Cant_Bancos">Cant. Bancos</option>
+                <option value="Bienes">Bienes</option>
+                <option value="Cant_Bienes">Cant. Bienes</option>
+                <option value="Inversiones">Inversiones</option>
+                <option value="Cant_Inversiones">Cant. Inversiones</option>
+                <option value="Ingresos">Ingresos</option>
+                <option value="Cant_Ingresos">Cant. Ingresos</option>
+            </optgroup>
+            <optgroup label="Variaciones Absolutas">
+                <option value="Activos Var. Abs.">Activos Var. Abs.</option>
+                <option value="Pasivos Var. Abs.">Pasivos Var. Abs.</option>
+                <option value="Patrimonio Var. Abs.">Patrimonio Var. Abs.</option>
+                <option value="Apalancamiento Var. Abs.">Apalancamiento Var. Abs.</option>
+                <option value="Endeudamiento Var. Abs.">Endeudamiento Var. Abs.</option>
+                <option value="BancoSaldo Var. Abs.">BancoSaldo Var. Abs.</option>
+                <option value="Bienes Var. Abs.">Bienes Var. Abs.</option>
+                <option value="Inversiones Var. Abs.">Inversiones Var. Abs.</option>
+                <option value="Ingresos Var. Abs.">Ingresos Var. Abs.</option>
+            </optgroup>
+            <optgroup label="Variaciones Relativas">
+                <option value="Activos Var. Rel.">Activos Var. Rel.</option>
+                <option value="Pasivos Var. Rel.">Pasivos Var. Rel.</option>
+                <option value="Patrimonio Var. Rel.">Patrimonio Var. Rel.</option>
+                <option value="Apalancamiento Var. Rel.">Apalancamiento Var. Rel.</option>
+                <option value="Endeudamiento Var. Rel.">Endeudamiento Var. Rel.</option>
+                <option value="BancoSaldo Var. Rel.">BancoSaldo Var. Rel.</option>
+                <option value="Bienes Var. Rel.">Bienes Var. Rel.</option>
+                <option value="Inversiones Var. Rel.">Inversiones Var. Rel.</option>
+                <option value="Ingresos Var. Rel.">Ingresos Var. Rel.</option>
+            </optgroup>
+        </select>
+        
+        <select id="operator" aria-label="Seleccionar operador de filtro" title="Operador de filtro">
+          <option value=">">Mayor que</option>
+          <option value="<">Menor que</option>
+          <option value="=">Igual a</option>
+          <option value=">=">Mayor o igual</option>
+          <option value="<=">Menor o igual</option>
+          <option value="between">Entre</option>
+          <option value="contains">Contiene</option>
+        </select>
+        
+        <input type="text" id="value1" placeholder="Valor">
+        <input type="text" id="value2" placeholder="y" style="display: none;">
+        
+        <button onclick="addFilter()">Agregar Filtro</button>
+        <button onclick="clearFilters()" style="background-color: #dc3545; color: white;">Limpiar Filtros</button>
+        
+        <div style="margin-left: auto; background-color:rgb(0, 176, 15);">
+            <button onclick="changeDataSource()">Estado</button>
+            <select id="dataSource" aria-label="Seleccionar fuente de datos" title="Fuente de datos">
+                <option value="src/data.json">Completo</option>
+                <option value="src/fk1Data.json">Incompleto</option>
+            </select>
+        </div>
+    </div>
+    
+    <div id="filters"></div>
+    
+    <div class="table-scroll-container">
+        <table id="results">
+            <thead>
+                <tr class="column-controls">
+
+                    <th>
+                        <div class="column-controls-container">
+                            <button class="freeze-btn" onclick="toggleFreezeColumn(0)">
+                                <i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i>
+                            </button>
+                            <button onclick="quickFilter('Nombre')"><span class="sort-icon">↕</span></button>
+                        </div>
+                        <input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(0, this.value)">
+                    </th>
+
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(1)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Año Declaración')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(1, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(2)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Compañía')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(2, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(3)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Cargo')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(3, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(4)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Usuario')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(4, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(5)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Activos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(5, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(6)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Pasivos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(6, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(7)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Patrimonio')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(7, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(8)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Apalancamiento')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(8, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(9)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Endeudamiento')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(9, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(10)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Cant_Deudas')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(10, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(11)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('BancoSaldo')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(11, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(12)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Cant_Bancos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(12, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(13)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Bienes')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(13, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(14)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Cant_Bienes')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(14, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(15)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Inversiones')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(15, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(16)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Cant_Inversiones')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(16, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(17)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Ingresos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(17, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(18)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Cant_Ingresos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(18, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(19)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Activos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(19, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(20)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Pasivos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(20, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(21)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Patrimonio Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(21, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(22)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Apalancamiento Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(22, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(23)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Endeudamiento Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(23, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(24)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('BancoSaldo Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(24, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(25)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Bienes Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(25, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(26)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Inversiones Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(26, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(27)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Ingresos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(27, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(28)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Activos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(28, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(29)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Pasivos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(29, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(30)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Patrimonio Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(30, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(31)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Apalancamiento Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(31, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(32)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Endeudamiento Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(32, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(33)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('BancoSaldo Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(33, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(34)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Bienes Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(34, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(35)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Inversiones Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(35, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(36)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Ingresos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(36, this.value)"></th>
+                </tr>
+                <tr>
+                    <th>
+                        <button onclick="showColumnStats('Nombre')">Nombre</button>
+                    </th>
+                
+                    <th><button onclick="showColumnStats('Año Declaración')">Año Declaración</button></th>
+                    <th><button onclick="showColumnStats('Compañía')">Compañía</button></th>
+                    <th><button onclick="showColumnStats('Cargo')">Cargo</button></th>
+                    <th><button onclick="showColumnStats('Usuario')">Usuario</button></th>
+                    <th><button onclick="showColumnStats('Activos')">Activos</button></th>
+                    <th><button onclick="showColumnStats('Pasivos')">Pasivos</button></th>
+                    <th><button onclick="showColumnStats('Patrimonio')">Patrimonio</button></th>
+                    <th><button onclick="showColumnStats('Apalancamiento')">Apalancamiento</button></th>
+                    <th><button onclick="showColumnStats('Endeudamiento')">Endeudamiento</button></th>
+                    <th><button onclick="showColumnStats('Cant_Deudas')">Cant_Deudas</button></th>
+                    <th><button onclick="showColumnStats('BancoSaldo')">BancoSaldo</button></th>
+                    <th><button onclick="showColumnStats('Cant_Bancos')">Cant_Bancos</button></th>
+                    <th><button onclick="showColumnStats('Bienes')">Bienes</button></th>
+                    <th><button onclick="showColumnStats('Cant_Bienes')">Cant_Bienes</button></th>
+                    <th><button onclick="showColumnStats('Inversiones')">Inversiones</button></th>
+                    <th><button onclick="showColumnStats('Cant_Inversiones')">Cant_Inversiones</button></th>
+                    <th><button onclick="showColumnStats('Ingresos')">Ingresos</button></th>
+                    <th><button onclick="showColumnStats('Cant_Ingresos')">Cant_Ingresos</button></th>
+                    <th><button onclick="showColumnStats('Activos Var. Abs.')">Activos Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Pasivos Var. Abs.')">Pasivos Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Patrimonio Var. Abs.')">Patrimonio Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Apalancamiento Var. Abs.')">Apalancamiento Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Endeudamiento Var. Abs.')">Endeudamiento Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('BancoSaldo Var. Abs.')">BancoSaldo Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Bienes Var. Abs.')">Bienes Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Inversiones Var. Abs.')">Inversiones Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Ingresos Var. Abs.')">Ingresos Var. Abs.</button></th>
+                    <th><button onclick="showColumnStats('Activos Var. Rel.')">Activos Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Pasivos Var. Rel.')">Pasivos Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Patrimonio Var. Rel.')">Patrimonio Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Apalancamiento Var. Rel.')">Apalancamiento Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Endeudamiento Var. Rel.')">Endeudamiento Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('BancoSaldo Var. Rel.')">BancoSaldo Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Bienes Var. Rel.')">Bienes Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Inversiones Var. Rel.')">Inversiones Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('Ingresos Var. Rel.')">Ingresos Var. Rel.</button></th>
+                    <th><button onclick="showColumnStats('')"><span class="glyphicon">&#xe185;</span></button></th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td colspan="35" class="loading">Cargando datos...</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- SheetJS for Excel export -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
+    <script src="static/script.js"></script>
+</body>
+</html>
