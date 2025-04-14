@@ -1317,6 +1317,7 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     <title>A R P A</title>
     <link rel="stylesheet" href="static/style.css">
     <link rel="shortcut icon" href="favicon.png" type="image/x-icon">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
@@ -1358,7 +1359,7 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
             </div>
         
         
-        <button onclick="exportToExcel()" style="margin-left: auto; background-color:rgb(0, 176, 15);">Exportar a Excel</button>
+        <button onclick="exportToExcel()" style="margin-left: auto; background-color:rgb(0, 176, 15);" class="fa fa-file-excel-o"> Exportar a Excel</button>
         <div id="passwordError" class="error-message"></div>
     </div>
 
@@ -1441,7 +1442,7 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
         <input type="text" id="value1" placeholder="Valor">
         <input type="text" id="value2" placeholder="y" style="display: none;">
         
-        <button onclick="addFilter()">Agregar Filtro</button>
+        <button onclick="addFilter()"><i class="fa fa-filter"></i> Agregar Filtro</button>
         <button onclick="clearFilters()" style="background-color: #dc3545; color: white;">Limpiar Filtros</button>
         
         <div style="margin-left: auto; background-color:rgb(0, 176, 15);">
@@ -1465,90 +1466,93 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
                             <button class="freeze-btn" onclick="toggleFreezeColumn(0)">
                                 <i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i>
                             </button>
+                            <button class="freeze-btn" onclick="showColumnStats('Nombre')">
+                                <i class="material-icons" style="font-size:18px">equalizer</i>
+                            </button>
                             <button onclick="quickFilter('Nombre')"><span class="sort-icon">↕</span></button>
                         </div>
                         <input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(0, this.value)">
                     </th>
 
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(1)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Año Declaración')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(1, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(2)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Compañía')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(2, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(3)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Cargo')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(3, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(4)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Usuario')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(4, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(5)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Activos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(5, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(6)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Pasivos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(6, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(7)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Patrimonio')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(7, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(8)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Apalancamiento')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(8, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(9)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Endeudamiento')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(9, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(10)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Cant_Deudas')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(10, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(11)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('BancoSaldo')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(11, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(12)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Cant_Bancos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(12, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(13)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Bienes')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(13, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(14)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Cant_Bienes')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(14, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(15)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Inversiones')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(15, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(16)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Cant_Inversiones')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(16, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(17)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Ingresos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(17, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(18)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Cant_Ingresos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(18, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(19)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Activos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(19, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(20)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Pasivos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(20, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(21)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Patrimonio Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(21, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(22)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Apalancamiento Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(22, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(23)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Endeudamiento Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(23, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(24)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('BancoSaldo Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(24, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(25)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Bienes Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(25, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(26)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Inversiones Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(26, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(27)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Ingresos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(27, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(28)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Activos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(28, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(29)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Pasivos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(29, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(30)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Patrimonio Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(30, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(31)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Apalancamiento Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(31, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(32)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Endeudamiento Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(32, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(33)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('BancoSaldo Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(33, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(34)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Bienes Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(34, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(35)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Inversiones Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(35, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(36)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button onclick="quickFilter('Ingresos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(36, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(1)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Año Declaración')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Año Declaración')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(1, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(2)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Compañía')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Compañía')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(2, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(3)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cargo')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cargo')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(3, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(4)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Usuario')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Usuario')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(4, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(5)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Activos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Activos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(5, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(6)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Pasivos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Pasivos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(6, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(7)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Patrimonio')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Patrimonio')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(7, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(8)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Apalancamiento')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Apalancamiento')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(8, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(9)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Endeudamiento')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Endeudamiento')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(9, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(10)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Deudas')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Deudas')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(10, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(11)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('BancoSaldo')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('BancoSaldo')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(11, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(12)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Bancos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Bancos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(12, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(13)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Bienes')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Bienes')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(13, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(14)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Bienes')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Bienes')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(14, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(15)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Inversiones')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Inversiones')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(15, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(16)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Inversiones')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Inversiones')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(16, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(17)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Ingresos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Ingresos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(17, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(18)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Ingresos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Ingresos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(18, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(19)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Activos Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Activos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(19, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(20)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Pasivos Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Pasivos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(20, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(21)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Patrimonio Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Patrimonio Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(21, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(22)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Apalancamiento Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Apalancamiento Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(22, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(23)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Endeudamiento Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Endeudamiento Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(23, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(24)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('BancoSaldo Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('BancoSaldo Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(24, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(25)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Bienes Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Bienes Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(25, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(26)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Inversiones Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Inversiones Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(26, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(27)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Ingresos Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Ingresos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(27, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(28)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Activos Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Activos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(28, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(29)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Pasivos Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Pasivos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(29, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(30)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Patrimonio Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Patrimonio Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(30, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(31)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Apalancamiento Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Apalancamiento Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(31, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(32)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Endeudamiento Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Endeudamiento Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(32, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(33)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('BancoSaldo Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('BancoSaldo Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(33, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(34)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Bienes Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Bienes Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(34, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(35)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Inversiones Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Inversiones Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(35, this.value)"></th>
+                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(36)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Ingresos Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Ingresos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(36, this.value)"></th>    
                 </tr>
                 <tr>
                     <th>
-                        <button onclick="showColumnStats('Nombre')">Nombre</button>
+                        <button>Nombre</button>
                     </th>
                 
-                    <th><button onclick="showColumnStats('Año Declaración')">Año Declaración</button></th>
-                    <th><button onclick="showColumnStats('Compañía')">Compañía</button></th>
-                    <th><button onclick="showColumnStats('Cargo')">Cargo</button></th>
-                    <th><button onclick="showColumnStats('Usuario')">Usuario</button></th>
-                    <th><button onclick="showColumnStats('Activos')">Activos</button></th>
-                    <th><button onclick="showColumnStats('Pasivos')">Pasivos</button></th>
-                    <th><button onclick="showColumnStats('Patrimonio')">Patrimonio</button></th>
-                    <th><button onclick="showColumnStats('Apalancamiento')">Apalancamiento</button></th>
-                    <th><button onclick="showColumnStats('Endeudamiento')">Endeudamiento</button></th>
-                    <th><button onclick="showColumnStats('Cant_Deudas')">Cant_Deudas</button></th>
-                    <th><button onclick="showColumnStats('BancoSaldo')">BancoSaldo</button></th>
-                    <th><button onclick="showColumnStats('Cant_Bancos')">Cant_Bancos</button></th>
-                    <th><button onclick="showColumnStats('Bienes')">Bienes</button></th>
-                    <th><button onclick="showColumnStats('Cant_Bienes')">Cant_Bienes</button></th>
-                    <th><button onclick="showColumnStats('Inversiones')">Inversiones</button></th>
-                    <th><button onclick="showColumnStats('Cant_Inversiones')">Cant_Inversiones</button></th>
-                    <th><button onclick="showColumnStats('Ingresos')">Ingresos</button></th>
-                    <th><button onclick="showColumnStats('Cant_Ingresos')">Cant_Ingresos</button></th>
-                    <th><button onclick="showColumnStats('Activos Var. Abs.')">Activos Var. Abs.</button></th>
-                    <th><button onclick="showColumnStats('Pasivos Var. Abs.')">Pasivos Var. Abs.</button></th>
-                    <th><button onclick="showColumnStats('Patrimonio Var. Abs.')">Patrimonio Var. Abs.</button></th>
-                    <th><button onclick="showColumnStats('Apalancamiento Var. Abs.')">Apalancamiento Var. Abs.</button></th>
-                    <th><button onclick="showColumnStats('Endeudamiento Var. Abs.')">Endeudamiento Var. Abs.</button></th>
-                    <th><button onclick="showColumnStats('BancoSaldo Var. Abs.')">BancoSaldo Var. Abs.</button></th>
-                    <th><button onclick="showColumnStats('Bienes Var. Abs.')">Bienes Var. Abs.</button></th>
-                    <th><button onclick="showColumnStats('Inversiones Var. Abs.')">Inversiones Var. Abs.</button></th>
-                    <th><button onclick="showColumnStats('Ingresos Var. Abs.')">Ingresos Var. Abs.</button></th>
-                    <th><button onclick="showColumnStats('Activos Var. Rel.')">Activos Var. Rel.</button></th>
-                    <th><button onclick="showColumnStats('Pasivos Var. Rel.')">Pasivos Var. Rel.</button></th>
-                    <th><button onclick="showColumnStats('Patrimonio Var. Rel.')">Patrimonio Var. Rel.</button></th>
-                    <th><button onclick="showColumnStats('Apalancamiento Var. Rel.')">Apalancamiento Var. Rel.</button></th>
-                    <th><button onclick="showColumnStats('Endeudamiento Var. Rel.')">Endeudamiento Var. Rel.</button></th>
-                    <th><button onclick="showColumnStats('BancoSaldo Var. Rel.')">BancoSaldo Var. Rel.</button></th>
-                    <th><button onclick="showColumnStats('Bienes Var. Rel.')">Bienes Var. Rel.</button></th>
-                    <th><button onclick="showColumnStats('Inversiones Var. Rel.')">Inversiones Var. Rel.</button></th>
-                    <th><button onclick="showColumnStats('Ingresos Var. Rel.')">Ingresos Var. Rel.</button></th>
-                    <th><button onclick="showColumnStats('')"><span class="glyphicon">&#xe185;</span></button></th>
+                    <th><button>Año Declaración</button></th>
+                    <th><button>Compañía</button></th>
+                    <th><button>Cargo</button></th>
+                    <th><button>Usuario</button></th>
+                    <th><button>Activos</button></th>
+                    <th><button>Pasivos</button></th>
+                    <th><button>Patrimonio</button></th>
+                    <th><button>Apalancamiento</button></th>
+                    <th><button>Endeudamiento</button></th>
+                    <th><button>Cant_Deudas</button></th>
+                    <th><button>BancoSaldo</button></th>
+                    <th><button>Cant_Bancos</button></th>
+                    <th><button>Bienes</button></th>
+                    <th><button>Cant_Bienes</button></th>
+                    <th><button>Inversiones</button></th>
+                    <th><button>Cant_Inversiones</button></th>
+                    <th><button>Ingresos</button></th>
+                    <th><button>Cant_Ingresos</button></th>
+                    <th><button>Activos Var. Abs.</button></th>
+                    <th><button>Pasivos Var. Abs.</button></th>
+                    <th><button>Patrimonio Var. Abs.</button></th>
+                    <th><button>Apalancamiento Var. Abs.</button></th>
+                    <th><button>Endeudamiento Var. Abs.</button></th>
+                    <th><button>BancoSaldo Var. Abs.</button></th>
+                    <th><button>Bienes Var. Abs.</button></th>
+                    <th><button>Inversiones Var. Abs.</button></th>
+                    <th><button>Ingresos Var. Abs.</button></th>
+                    <th><button>Activos Var. Rel.</button></th>
+                    <th><button>Pasivos Var. Rel.</button></th>
+                    <th><button>Patrimonio Var. Rel.</button></th>
+                    <th><button>Apalancamiento Var. Rel.</button></th>
+                    <th><button>Endeudamiento Var. Rel.</button></th>
+                    <th><button>BancoSaldo Var. Rel.</button></th>
+                    <th><button>Bienes Var. Rel.</button></th>
+                    <th><button>Inversiones Var. Rel.</button></th>
+                    <th><button>Ingresos Var. Rel.</button></th>
+                    <th><button><i class="material-icons" style="font-size:24px">trending_up</i></button></th>
                 </tr>
             </thead>
             <tbody>
@@ -1824,6 +1828,11 @@ h1 {
     padding: 20px;
     font-style: italic;
     color: #6c757d;
+}
+
+.frozen-column.highlighted-column {
+    z-index: 25 !important;
+    background-color: #e6f0ff !important;
 }
 
 .highlighted-column {
@@ -2898,10 +2907,14 @@ function highlightColumn(columnName) {
         headers[columnIndex].classList.add('highlighted-column');
     }
     
-    // Highlight cells
-    document.querySelectorAll(`#results tr td:nth-child(${columnIndex + 1})`).forEach(cell => {
+    // Highlight cells - including frozen columns
+    document.querySelectorAll(`#results tr > *:nth-child(${columnIndex + 1})`).forEach(cell => {
         cell.classList.add('highlighted-column');
     });
+    
+    // Update current filter column
+    currentFilterColumn = columnName;
+    lastSelectedColumn = columnName;
 }
 
 function removeFilter(index) {
@@ -3203,6 +3216,9 @@ function toggleFreezeColumn(columnIndex) {
     const columnCells = document.querySelectorAll(`#results tr > *:nth-child(${columnIndex + 1})`);
     const freezeBtn = document.querySelector(`th:nth-child(${columnIndex + 1}) .freeze-btn`);
     
+    // Get the column name from the header
+    const columnName = document.querySelector(`#results thead tr:not(.column-controls) th:nth-child(${columnIndex + 1}) button`).textContent;
+    
     if (frozenColumns.includes(columnIndex)) {
         // Unfreeze
         frozenColumns = frozenColumns.filter(col => col !== columnIndex);
@@ -3211,11 +3227,21 @@ function toggleFreezeColumn(columnIndex) {
             cell.style.left = '';
         });
         freezeBtn.classList.remove('active');
+        
+        // Remove highlight if this was the only frozen column
+        if (frozenColumns.length === 0) {
+            document.querySelectorAll('.highlighted-column').forEach(el => {
+                el.classList.remove('highlighted-column');
+            });
+        }
     } else {
         // Freeze
         frozenColumns.push(columnIndex);
         frozenColumns.sort((a, b) => a - b); // Keep in order
         freezeBtn.classList.add('active');
+        
+        // Highlight the column
+        highlightColumn(columnName);
     }
     
     updateFrozenColumns();
