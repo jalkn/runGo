@@ -1461,7 +1461,7 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     <div class="tab-container">
         <button class="tab active" data-tab="bienes-rentas">Bienes y Rentas</button>
         <!--<button class="tab" data-tab="transactions">Conflictos de Interes</button>-->
-        <button class="tab" data-tab="transactions">Extractos Bancarios</button>
+        <button class="tab" data-tab="transactions">Consumos TC Corporativas</button>
     </div>
     
     <div id="bienes-rentas" class="tab-content active">
@@ -1715,7 +1715,7 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
                 <tr>
                     <th>Archivo</th>
                     <th>Nombre</th>
-                    <th>Tarjeta</th>
+                    <th># Tarjeta</th>
                     <th>Autorización</th>
                     <th>Fecha</th>
                     <th>Descripción</th>
@@ -1730,7 +1730,7 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
             </thead>
             <tbody>
                 <tr>
-                    <td colspan="12" class="loading">Cargue un extracto PDF para analizar</td>
+                    <td colspan="12" class="loading">Cargue los extractos PDF para analizarlos</td>
                 </tr>
             </tbody>
         </table>
