@@ -1327,42 +1327,53 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
         <div class="nomPag">A R P A</div>
     </div>
     
-    <h1>Bienes y Rentas</h1>
-    <div class="filter-form">
-        <label for="excelUpload" class="file-upload-label">
-          <span class="file-upload-button">Cargar archivo Excel</span>
-          <input type="file" 
-                 id="excelUpload" 
-                 accept=".xlsx,.xls" 
-                 aria-describedby="fileUploadHelp"
-                 class="file-upload-input">
-        </label>
-        <span id="fileUploadStatus" aria-live="polite" class="file-upload-status"></span>
-        
-            <div id="passwordContainer" style="display: none;">
-                <div style="display: flex; gap: 15px; width: 100%;">
-                    <div class="password-input-group" style="flex: 1;">
-                        <input type="password" 
-                            id="excelOpenPassword" 
-                            placeholder="Contraseña de apertura"
-                            class="password-input">
-                        <span class="toggle-password" onclick="togglePassword('excelOpenPassword')">👁️</span>
-                    </div>
-                    <div class="password-input-group" style="flex: 1;">
-                        <input type="password" 
-                            id="excelModifyPassword" 
-                            placeholder="Contraseña de modificación"
-                            class="password-input">
-                        <span class="toggle-password" onclick="togglePassword('excelModifyPassword')">👁️</span>
-                    </div><button id="analyzeButton">Analizar Archivo</button>
-                </div>
-            </div>
-        
-        
-        <button onclick="exportToExcel()" style="margin-left: auto; background-color:rgb(0, 176, 15);" class="fa fa-file-excel-o"> Exportar a Excel</button>
-        <div id="passwordError" class="error-message"></div>
+    <div class="tab-container">
+        <button class="tab active" data-tab="bienes-rentas">Bienes y Rentas</button>
+        <!--<button class="tab" data-tab="transactions">Extractos</button>-->
     </div>
-
+    
+    <div id="bienes-rentas" class="tab-content active">
+        <div class="filter-form">
+            <label for="excelUpload" class="file-upload-label">
+              <span class="file-upload-button">Cargar archivo Excel</span>
+              <input type="file"
+                     id="excelUpload"
+                     accept=".xlsx,.xls"
+                     aria-describedby="fileUploadHelp"
+                     class="file-upload-input">
+            </label>
+            <span id="fileUploadStatus" aria-live="polite" class="file-upload-status"></span>
+    
+                <div id="passwordContainer" style="display: none;">
+                    <div style="display: flex; gap: 15px; width: 100%;">
+                        <div class="password-input-group" style="flex: 1;">
+                            <input type="password"
+                                id="excelOpenPassword"
+                                placeholder="Contraseña de apertura"
+                                class="password-input">
+                            <span class="toggle-password" onclick="togglePassword('excelOpenPassword')">👁️ </span>
+                        </div>
+                        <div class="password-input-group" style="flex: 1;">
+                            <input type="password"
+                                id="excelModifyPassword"
+                                placeholder="Contraseña de modificación"
+                                class="password-input">
+                            <span class="toggle-password" onclick="togglePassword('excelModifyPassword')">👁️ </span>
+                        </div><button id="analyzeButton">Analizar Archivo</button>
+                    </div>
+                </div>
+    
+    
+            <button onclick="exportToExcel()" style="margin-left: auto; background-color:rgb(0, 176, 15);" class="fa fa-file-excel-o"> Exportar a Excel</button>
+            <div id="passwordError" class="error-message"></div>
+        </div>
+    </div>
+    <!--
+    <div id="transactions" class="tab-content" style="display: none;">
+        <h2>Extractos</h2>
+        <p>Este es la tabla para los extratos.</p>
+    </div>
+    -->
     <div id="loadingBarContainer" style="display: none;">
         <div id="loadingBar"></div>
         <div id="loadingText">Analizando archivo...</div>
@@ -1622,7 +1633,33 @@ body {
     margin-left: 10px;
     color: #0b00a2;
     font-weight: bold;
-    font-size: 1rem;
+    font-size: 1,5rem;
+}
+
+.tab-container {
+    display: flex;
+    border-bottom: 1px solid #ccc;
+}
+
+.tab {
+    padding: 10px 15px;
+    border: none;
+    background-color: #f0f0f0;
+    cursor: pointer;
+    border-bottom: none; /* Remove bottom border */
+    margin-bottom: -1px; /* Adjust margin to cover the border */
+}
+
+.tab.active {
+    background-color: #fff;
+    border-bottom: 1px solid #fff;
+    border: 1px solid #ccc; /* Add border around the active tab */
+    border-bottom: none;
+}
+
+.tab-content {
+    padding: 15px;
+    /* border: 1px solid #ccc; Removed to avoid double border*/
 }
 
 h1 {
@@ -3876,21 +3913,40 @@ function exportDetailsToExcel() {
     XLSX.writeFile(workbook, fileName);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', function() {
+    // --- First Listener's Code ---
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+
+    tabs.forEach(tab => {
+        tab.addEventListener('click', function() {
+            // Deactivate all tabs and content
+            tabs.forEach(t => t.classList.remove('active'));
+            tabContents.forEach(c => c.style.display = 'none');
+
+            // Activate the clicked tab and its content
+            this.classList.add('active');
+            const tabId = this.dataset.tab;
+            document.getElementById(tabId).style.display = 'block';
+        });
+    });
+
+
+    // --- Second Listener's Code ---
     // Set initial header positions
     const controlsRow = document.querySelector('.column-controls');
     const secondHeaderRow = document.querySelector('#results thead tr:not(.column-controls)');
-    
+
     if (controlsRow && secondHeaderRow) {
         const controlsHeight = controlsRow.offsetHeight;
         secondHeaderRow.style.top = `${controlsHeight}px`;
     }
-    
+
     // Add resize observer
     const resizeObserver = new ResizeObserver(() => {
-        updateFrozenColumns();
+        updateFrozenColumns(); // Assuming this function is defined elsewhere
     });
-    
+
     if (controlsRow) {
         resizeObserver.observe(controlsRow);
     }
@@ -3926,7 +3982,7 @@ function createStructure {
 
     # Upgrade pip and install required packages
     python -m pip install --upgrade pip
-    python -m pip install pandas python-dotenv openpyxl plotly msoffcrypto-tool
+    python -m pip install pandas python-dotenv openpyxl plotly msoffcrypto-tool pdfplumber
 
     # Always create subdirectories
     Write-Host "🏗️ Creating directory structure" -ForegroundColor $YELLOW
