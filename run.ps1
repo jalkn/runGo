@@ -1436,6 +1436,102 @@ if __name__ == "__main__":
 "@
 }
 
+function createConflictscript {
+    Write-Host "🏗️ Creating Conflict Script" -ForegroundColor $YELLOW
+    Set-Content -Path "models/conflicts.py" -Value @"
+import pandas as pd
+import os
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import numbers
+
+def extract_specific_columns(input_file, output_file, custom_headers=None):
+    
+    try:
+        # Setup output directory
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        
+        # Read raw data (no automatic parsing)
+        df = pd.read_excel(input_file, header=None)
+        
+        # Column selection (first 11 + specified extras)
+        base_cols = list(range(11))  # Columns 0-10 (A-K)
+        extra_cols = [12,14,16,18,20,22,24,26,28]
+        selected_cols = [col for col in base_cols + extra_cols if col < df.shape[1]]
+        
+        # Extract data with headers
+        result = df.iloc[3:, selected_cols].copy()
+        result.columns = df.iloc[2, selected_cols].values
+        
+        # Apply custom headers if provided
+        if custom_headers is not None:
+            if len(custom_headers) != len(result.columns):
+                raise ValueError(f"Custom headers count ({len(custom_headers)}) doesn't match column count ({len(result.columns)})")
+            result.columns = custom_headers
+        
+        # Merge C,D,E,F → C (indices 2,3,4,5)
+        if all(c in selected_cols for c in [2,3,4,5]):
+            result.iloc[:, 2] = result.iloc[:, 2:6].astype(str).apply(' '.join, axis=1)
+            result.drop(result.columns[3:6], axis=1, inplace=True)
+            selected_cols = [c for c in selected_cols if c not in [3,4,5]]  # Update column tracking
+        
+        # Special handling for Column J (input index 9)
+        if 9 in selected_cols:
+            j_pos = selected_cols.index(9)  # Find its position in output
+            date_col = result.columns[j_pos]
+            
+            # Convert with European date format
+            result[date_col] = pd.to_datetime(
+                result[date_col],
+                dayfirst=True,
+                errors='coerce'
+            )
+            
+            # Save with Excel formatting
+            with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+                result.to_excel(writer, index=False)
+                
+                # Get the worksheet and format the date column
+                worksheet = writer.sheets['Sheet1']
+                date_col_letter = get_column_letter(j_pos + 1)
+                
+                # Apply date format to all cells in the column
+                for cell in worksheet[date_col_letter]:
+                    if cell.row == 1:  # Skip header
+                        continue
+                    cell.number_format = 'DD/MM/YYYY'
+                
+                # Auto-adjust columns
+                for idx, col in enumerate(result.columns):
+                    col_letter = get_column_letter(idx+1)
+                    worksheet.column_dimensions[col_letter].width = max(
+                        len(str(col))+2,
+                        result[col].astype(str).str.len().max()+2
+                    )
+            
+            print(f"Success! Output saved to: {output_file}")
+        
+        else:
+            print("Warning: Column J not found in selected columns")
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+
+# Example usage with custom headers
+custom_headers = [
+    "ID", "# Documento", "Nombre Completo", "Nombre", "1er Apellido", 
+    "2do Apellido", "Compañia", "Cargo", "Email", "Fecha de Inicio", 
+    "Q1", "Q2", "Q3", "Q4", "Q5",
+    "Q6", "Q7", "Q8", "Q9", "Q10"
+]
+
+extract_specific_columns(
+    input_file="src/conflictos.xls",
+    output_file="tables/output.xlsx",
+    custom_headers=custom_headers
+)
+"@
+}
+
 function createIndex {
 Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     # html
@@ -1691,9 +1787,9 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     <!-- Add the transactions tab content -->
     <div id="transactions" class="tab-content">
         <div class="filter-form">
-            <label for="pdfUpload" class="file-upload-label">
-                <span class="file-upload-button">Cargar Extractos PDF</span>
-                <input type="file" id="pdfUpload" accept=".pdf" class="file-upload-input">
+            <label for="pdfFolderUpload" class="file-upload-label">
+                <span class="file-upload-button">Seleccionar Carpeta con PDFs</span>
+                <input type="file" id="pdfFolderUpload" webkitdirectory directory multiple class="file-upload-input">
             </label>
             <span id="pdfUploadStatus" class="file-upload-status"></span>
             
@@ -1703,38 +1799,38 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
                         <input type="password" id="pdfPassword" placeholder="Contraseña del PDF" class="password-input">
                         <span class="toggle-password" onclick="togglePassword('pdfPassword')">👁️</span>
                     </div>
-                    <button id="analyzePdfButton" style="flex: 0 0 auto;">Analizar PDF</button>
-            </div>
-            <div id="pdfPasswordError" class="error-message"></div>
-        </div>     
-    </div>
+                    <button id="analyzePdfButton" style="flex: 0 0 auto;">Analizar PDFs</button>
+                </div>
+                <div id="pdfPasswordError" class="error-message"></div>
+            </div>     
+        </div>
 
-    <div class="table-scroll-container">
-        <table id="transactionsResults">
-            <thead>
-                <tr>
-                    <th>Archivo</th>
-                    <th>Nombre</th>
-                    <th># Tarjeta</th>
-                    <th>Autorización</th>
-                    <th>Fecha</th>
-                    <th>Descripción</th>
-                    <th>Categoría</th>
-                    <th>Valor</th>
-                    <th>Tasa Pactada</th>
-                    <th>Tasa EA</th>
-                    <th>Cargos/Abonos</th>
-                    <th>Saldo</th>
-                    <th>Cuotas</th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="12" class="loading">Cargue los extractos PDF para analizarlos</td>
-                </tr>
-            </tbody>
-        </table>
-    </div> 
+        <div class="table-scroll-container">
+            <table id="transactionsResults">
+                <thead>
+                    <tr>
+                        <th>Archivo</th>
+                        <th>Nombre</th>
+                        <th># Tarjeta</th>
+                        <th>Autorización</th>
+                        <th>Fecha</th>
+                        <th>Descripción</th>
+                        <th>Valor</th>
+                        <th>Tasa Pactada</th>
+                        <th>Tasa EA</th>
+                        <th>Cargos/Abonos</th>
+                        <th>Saldo</th>
+                        <th>Cuotas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="12" class="loading">Seleccione una carpeta con PDFs para analizar</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div> 
+    </div>
 
     <!-- SheetJS for Excel export -->
     <script src="https://cdn.sheetjs.com/xlsx-0.19.3/package/dist/xlsx.full.min.js"></script>
@@ -4329,7 +4425,7 @@ function createStructure {
 
     # Upgrade pip and install required packages
     python -m pip install --upgrade pip
-    python -m pip install pandas python-dotenv openpyxl plotly msoffcrypto-tool pdfplumber
+    python -m pip install pandas python-dotenv openpyxl plotly msoffcrypto-tool pdfplumber werkzeug xlrd
 
     # Always create subdirectories
     Write-Host "🏗️ Creating directory structure" -ForegroundColor $YELLOW
@@ -4360,6 +4456,7 @@ function main {
     createNets
     createTrends
     createTransactions
+    createConflictscript
     createApp
     createIndex
 
