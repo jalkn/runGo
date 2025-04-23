@@ -1305,6 +1305,233 @@ if __name__ == "__main__":
 "@
 }
 
+function createTransactions {
+    Write-Host "🏗️ Creating Transactions" -ForegroundColor $YELLOW
+    Set-Content -Path "models/transactions.py" -Value @"
+import pdfplumber
+import pandas as pd
+import re
+import os
+from datetime import datetime
+
+def log_message(message):
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    print(f"[{timestamp}] {message}")
+
+def analyze_transactions(pdf_folder="src/extractos", output_folder="tables/transactions", password="890105669"):
+    """Analyze PDF bank statements and extract transactions"""
+    try:
+        # Ensure output directory exists
+        os.makedirs(output_folder, exist_ok=True)
+        
+        output_excel = os.path.join(output_folder, "transactions.xlsx")
+        output_json = os.path.join(output_folder, "transactions.json")
+        
+        column_names = [
+            "Archivo", "Nombre", "Número de Tarjeta", "Número de Autorización",
+            "Fecha de Transacción", "Descripción", "Valor Original",
+            "Tasa Pactada", "Tasa EA Facturada", "Cargos y Abonos",
+            "Saldo a Diferir", "Cuotas"
+        ]
+        
+        pattern_fila_completa = re.compile(
+            r"(\d{6}|\d{1,6}|000000)\s+"
+            r"(\d{2}/\d{2}/\d{4})\s+"
+            r"(.+?)\s+"
+            r"(\d{1,3}(?:,\d{3})*\.\d{2})\s+"
+            r"(\d{1,2},\d{4})\s+"
+            r"(\d{1,2},\d{4})\s+"
+            r"(\d{1,3}(?:,\d{3})*\.\d{2})\s+"
+            r"(\d{1,3}(?:,\d{3})*\.\d{2})\s+"
+            r"(\d+/\d+|0.00)"
+        )
+        
+        pattern_tarjeta = re.compile(r"TARJETA: \*{12}(\d{4})")
+        
+        def formato_numerico(valor):
+            if valor:
+                return valor.replace(".", "#").replace(",", ".").replace("#", ",")
+            return valor
+        
+        data_rows = []
+        pdf_files = [f for f in os.listdir(pdf_folder) if f.lower().endswith(".pdf")]
+        
+        if not pdf_files:
+            log_message("No se encontraron archivos PDF en la carpeta 'src/extractos'")
+            return False
+        
+        for pdf_file in pdf_files:
+            pdf_path = os.path.join(pdf_folder, pdf_file)
+            log_message(f"Procesando: {pdf_file}")
+            
+            try:
+                with pdfplumber.open(pdf_path, password=password) as pdf:
+                    nombre = ""
+                    tarjeta = ""
+                    
+                    for page in pdf.pages:
+                        text = page.extract_text()
+                        if text:
+                            lines = text.split("\n")
+                            
+                            # Buscar Nombre limpio
+                            if not nombre:
+                                for idx, line in enumerate(lines):
+                                    if "SEÑOR (A):" in line.upper():
+                                        if idx + 1 < len(lines):
+                                            posible_nombre = lines[idx + 1].strip()
+                                            if "AÑO" in posible_nombre.upper():
+                                                posible_nombre = posible_nombre.upper().split("AÑO")[0].strip()
+                                            if len(posible_nombre.split()) >= 3:
+                                                nombre = posible_nombre
+                                                break
+                            
+                            # Buscar Tarjeta
+                            if not tarjeta:
+                                tarjeta_match = pattern_tarjeta.search(text)
+                                if tarjeta_match:
+                                    tarjeta = tarjeta_match.group(1)
+                            
+                            # Buscar Transacciones
+                            for line in lines:
+                                cleaned_line = ' '.join(line.split())
+                                match = pattern_fila_completa.search(cleaned_line)
+                                if match:
+                                    row_data = list(match.groups())
+                                    row_data.insert(0, tarjeta)
+                                    row_data.insert(0, nombre)
+                                    row_data.insert(0, pdf_file)
+                                    
+                                    row_data[6] = formato_numerico(row_data[6])
+                                    row_data[9] = formato_numerico(row_data[9])
+                                    row_data[10] = formato_numerico(row_data[10])
+                                    data_rows.append(row_data)
+            
+            except Exception as e:
+                log_message(f"Error al procesar '{pdf_file}': {str(e)}")
+                continue
+        
+        if data_rows:
+            df_final = pd.DataFrame(data_rows, columns=column_names)
+            
+            # Save to Excel
+            df_final.to_excel(output_excel, index=False)
+            log_message(f"Datos extraídos correctamente. Archivo Excel guardado en: {output_excel}")
+            
+            # Save to JSON
+            df_final.to_json(output_json, orient='records', indent=4, force_ascii=False)
+            log_message(f"Datos extraídos correctamente. Archivo JSON guardado en: {output_json}")
+            
+            return True
+        else:
+            log_message("No se extrajo ningún dato de los archivos PDF.")
+            return False
+    
+    except Exception as e:
+        log_message(f"Error inesperado en el análisis de transacciones: {str(e)}")
+        return False
+
+if __name__ == "__main__":
+    analyze_transactions()
+"@
+}
+
+function createConflictscript {
+    Write-Host "🏗️ Creating Conflict Script" -ForegroundColor $YELLOW
+    Set-Content -Path "models/conflicts.py" -Value @"
+import pandas as pd
+import os
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import numbers
+
+def extract_specific_columns(input_file, output_file, custom_headers=None):
+    
+    try:
+        # Setup output directory
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        
+        # Read raw data (no automatic parsing)
+        df = pd.read_excel(input_file, header=None)
+        
+        # Column selection (first 11 + specified extras)
+        base_cols = list(range(11))  # Columns 0-10 (A-K)
+        extra_cols = [12,14,16,18,20,22,24,26,28]
+        selected_cols = [col for col in base_cols + extra_cols if col < df.shape[1]]
+        
+        # Extract data with headers
+        result = df.iloc[3:, selected_cols].copy()
+        result.columns = df.iloc[2, selected_cols].values
+        
+        # Apply custom headers if provided
+        if custom_headers is not None:
+            if len(custom_headers) != len(result.columns):
+                raise ValueError(f"Custom headers count ({len(custom_headers)}) doesn't match column count ({len(result.columns)})")
+            result.columns = custom_headers
+        
+        # Merge C,D,E,F → C (indices 2,3,4,5)
+        if all(c in selected_cols for c in [2,3,4,5]):
+            result.iloc[:, 2] = result.iloc[:, 2:6].astype(str).apply(' '.join, axis=1)
+            result.drop(result.columns[3:6], axis=1, inplace=True)
+            selected_cols = [c for c in selected_cols if c not in [3,4,5]]  # Update column tracking
+        
+        # Special handling for Column J (input index 9)
+        if 9 in selected_cols:
+            j_pos = selected_cols.index(9)  # Find its position in output
+            date_col = result.columns[j_pos]
+            
+            # Convert with European date format
+            result[date_col] = pd.to_datetime(
+                result[date_col],
+                dayfirst=True,
+                errors='coerce'
+            )
+            
+            # Save with Excel formatting
+            with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+                result.to_excel(writer, index=False)
+                
+                # Get the worksheet and format the date column
+                worksheet = writer.sheets['Sheet1']
+                date_col_letter = get_column_letter(j_pos + 1)
+                
+                # Apply date format to all cells in the column
+                for cell in worksheet[date_col_letter]:
+                    if cell.row == 1:  # Skip header
+                        continue
+                    cell.number_format = 'DD/MM/YYYY'
+                
+                # Auto-adjust columns
+                for idx, col in enumerate(result.columns):
+                    col_letter = get_column_letter(idx+1)
+                    worksheet.column_dimensions[col_letter].width = max(
+                        len(str(col))+2,
+                        result[col].astype(str).str.len().max()+2
+                    )
+            
+            print(f"Success! Output saved to: {output_file}")
+        
+        else:
+            print("Warning: Column J not found in selected columns")
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+
+# Example usage with custom headers
+custom_headers = [
+    "ID", "# Documento", "Nombre Completo", "Nombre", "1er Apellido", 
+    "2do Apellido", "Compañia", "Cargo", "Email", "Fecha de Inicio", 
+    "Q1", "Q2", "Q3", "Q4", "Q5",
+    "Q6", "Q7", "Q8", "Q9", "Q10"
+]
+
+extract_specific_columns(
+    input_file="src/conflictos.xls",
+    output_file="tables/output.xlsx",
+    custom_headers=custom_headers
+)
+"@
+}
+
 function createIndex {
 Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     # html
@@ -1329,249 +1556,280 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     
     <div class="tab-container">
         <button class="tab active" data-tab="bienes-rentas">Bienes y Rentas</button>
-        <!--<button class="tab" data-tab="transactions">Extractos</button>-->
+        <!--<button class="tab" data-tab="transactions">Conflictos de Interes</button>-->
+        <button class="tab" data-tab="transactions">Consumos TC Corporativas</button>
     </div>
     
     <div id="bienes-rentas" class="tab-content active">
         <div class="filter-form">
             <label for="excelUpload" class="file-upload-label">
               <span class="file-upload-button">Cargar archivo Excel</span>
-              <input type="file"
-                     id="excelUpload"
-                     accept=".xlsx,.xls"
-                     aria-describedby="fileUploadHelp"
-                     class="file-upload-input">
+              <input type="file" id="excelUpload" accept=".xlsx,.xls" aria-describedby="fileUploadHelp" class="file-upload-input">
             </label>
             <span id="fileUploadStatus" aria-live="polite" class="file-upload-status"></span>
     
-                <div id="passwordContainer" style="display: none;">
-                    <div style="display: flex; gap: 15px; width: 100%;">
-                        <div class="password-input-group" style="flex: 1;">
-                            <input type="password"
-                                id="excelOpenPassword"
-                                placeholder="Contraseña de apertura"
-                                class="password-input">
-                            <span class="toggle-password" onclick="togglePassword('excelOpenPassword')">👁️ </span>
-                        </div>
-                        <div class="password-input-group" style="flex: 1;">
-                            <input type="password"
-                                id="excelModifyPassword"
-                                placeholder="Contraseña de modificación"
-                                class="password-input">
-                            <span class="toggle-password" onclick="togglePassword('excelModifyPassword')">👁️ </span>
-                        </div><button id="analyzeButton">Analizar Archivo</button>
+            <div id="passwordContainer" style="display: none;">
+                <div style="display: flex; gap: 15px; width: 100%;">
+                    <div class="password-input-group" style="flex: 1;">
+                        <input type="password"
+                            id="excelOpenPassword"
+                            placeholder="Contraseña de apertura"
+                            class="password-input">
+                        <span class="toggle-password" onclick="togglePassword('excelOpenPassword')">👁️ </span>
                     </div>
+                    <div class="password-input-group" style="flex: 1;">
+                        <input type="password"
+                            id="excelModifyPassword"
+                            placeholder="Contraseña de modificación"
+                            class="password-input">
+                        <span class="toggle-password" onclick="togglePassword('excelModifyPassword')">👁️ </span>
+                    </div>
+                    <button id="analyzeButton">Analizar Archivo</button>
                 </div>
+                <div id="passwordError" class="error-message"></div>
+            </div>
+
+            <div id="loadingBarContainer" style="display: none;">
+                <div id="loadingBar"></div>
+                <div id="loadingText">Analizando archivo...</div>
+            </div>
     
     
             <button onclick="exportToExcel()" style="margin-left: auto; background-color:rgb(0, 176, 15);" class="fa fa-file-excel-o"> Exportar a Excel</button>
-            <div id="passwordError" class="error-message"></div>
+            
         </div>
-    </div>
-    <!--
-    <div id="transactions" class="tab-content" style="display: none;">
-        <h2>Extractos</h2>
-        <p>Este es la tabla para los extratos.</p>
-    </div>
-    -->
-    <div id="loadingBarContainer" style="display: none;">
-        <div id="loadingBar"></div>
-        <div id="loadingText">Analizando archivo...</div>
-    </div>
-    <!-- SheetJS for Excel export 
-    <div class="filter-form">
-        <div class="filter-buttons">
-            <button onclick="applyPredeterminedFilter('Patrimonio', '>', '3000000000')">Patrimonio > ,000M</button>
-            <button onclick="applyPredeterminedFilter('Patrimonio Var. Rel.', '>', '30')">Patrimonio Var. Rel. > 30%</button>
-            <button onclick="applyPredeterminedFilter('Cant_Bienes', '<', '0')">Cant. Bienes < 0</button>
-            <button onclick="applyPredeterminedFilter('Endeudamiento Var. Rel.', '>', '50')">Endeudamiento Var. Rel. > 50%</button>
-            <button onclick="applyPredeterminedFilter('Ingresos', '>', '50000000')">Ingresos > </button>
-            <button onclick="applyPredeterminedFilter('Cant_Deudas', '>=', '5')">Cant. Deudas ≥ 5</button>
-            <button onclick="applyPredeterminedFilter('Cant_Bienes', '>=', '6')">Cant. Bienes ≥ 6</button>
-        </div> 
-    </div>-->
-    <div class="filter-form">
-        <select id="column" aria-label="Seleccionar columna para filtrar" title="Columna para filtrar">
-            <option value="">-- Selecciona columna --</option>
-            <optgroup label="Información Personal">
-                <option value="Nombre">Nombre</option>
-                <option value="Año Declaración">Año Declaración</option>
-                <option value="Compañía">Compañía</option>
-                <option value="Cargo">Cargo</option>
-                <option value="Usuario">Usuario</option>
-            </optgroup>
-            <optgroup label="Valores Principales">
-                <option value="Activos">Activos</option>
-                <option value="Pasivos">Pasivos</option>
-                <option value="Patrimonio">Patrimonio</option>
-                <option value="Apalancamiento">Apalancamiento</option>
-                <option value="Endeudamiento">Endeudamiento</option>
-                <option value="Cant_Deudas">Cant. Deudas</option>
-                <option value="BancoSaldo">Saldo Bancario</option>
-                <option value="Cant_Bancos">Cant. Bancos</option>
-                <option value="Bienes">Bienes</option>
-                <option value="Cant_Bienes">Cant. Bienes</option>
-                <option value="Inversiones">Inversiones</option>
-                <option value="Cant_Inversiones">Cant. Inversiones</option>
-                <option value="Ingresos">Ingresos</option>
-                <option value="Cant_Ingresos">Cant. Ingresos</option>
-            </optgroup>
-            <optgroup label="Variaciones Absolutas">
-                <option value="Activos Var. Abs.">Activos Var. Abs.</option>
-                <option value="Pasivos Var. Abs.">Pasivos Var. Abs.</option>
-                <option value="Patrimonio Var. Abs.">Patrimonio Var. Abs.</option>
-                <option value="Apalancamiento Var. Abs.">Apalancamiento Var. Abs.</option>
-                <option value="Endeudamiento Var. Abs.">Endeudamiento Var. Abs.</option>
-                <option value="BancoSaldo Var. Abs.">BancoSaldo Var. Abs.</option>
-                <option value="Bienes Var. Abs.">Bienes Var. Abs.</option>
-                <option value="Inversiones Var. Abs.">Inversiones Var. Abs.</option>
-                <option value="Ingresos Var. Abs.">Ingresos Var. Abs.</option>
-            </optgroup>
-            <optgroup label="Variaciones Relativas">
-                <option value="Activos Var. Rel.">Activos Var. Rel.</option>
-                <option value="Pasivos Var. Rel.">Pasivos Var. Rel.</option>
-                <option value="Patrimonio Var. Rel.">Patrimonio Var. Rel.</option>
-                <option value="Apalancamiento Var. Rel.">Apalancamiento Var. Rel.</option>
-                <option value="Endeudamiento Var. Rel.">Endeudamiento Var. Rel.</option>
-                <option value="BancoSaldo Var. Rel.">BancoSaldo Var. Rel.</option>
-                <option value="Bienes Var. Rel.">Bienes Var. Rel.</option>
-                <option value="Inversiones Var. Rel.">Inversiones Var. Rel.</option>
-                <option value="Ingresos Var. Rel.">Ingresos Var. Rel.</option>
-            </optgroup>
-        </select>
-        
-        <select id="operator" aria-label="Seleccionar operador de filtro" title="Operador de filtro">
-          <option value=">">Mayor que</option>
-          <option value="<">Menor que</option>
-          <option value="=">Igual a</option>
-          <option value=">=">Mayor o igual</option>
-          <option value="<=">Menor o igual</option>
-          <option value="between">Entre</option>
-          <option value="contains">Contiene</option>
-        </select>
-        
-        <input type="text" id="value1" placeholder="Valor">
-        <input type="text" id="value2" placeholder="y" style="display: none;">
-        
-        <button onclick="addFilter()"><i class="fa fa-filter"></i> Agregar Filtro</button>
-        <button onclick="clearFilters()" style="background-color: #dc3545; color: white;">Limpiar Filtros</button>
-        
-        <div style="margin-left: auto; background-color:rgb(0, 176, 15);">
-            <button onclick="changeDataSource()">Estado</button>
-            <select id="dataSource" aria-label="Seleccionar fuente de datos" title="Fuente de datos">
-                <option value="src/data.json">Completo</option>
-                <option value="src/fk1Data.json">Incompleto</option>
+
+        <div class="filter-form">
+            <select id="column" aria-label="Seleccionar columna para filtrar" title="Columna para filtrar">
+                <option value="">-- Selecciona columna --</option>
+                <optgroup label="Información Personal">
+                    <option value="Nombre">Nombre</option>
+                    <option value="Año Declaración">Año Declaración</option>
+                    <option value="Compañía">Compañía</option>
+                    <option value="Cargo">Cargo</option>
+                    <option value="Usuario">Usuario</option>
+                </optgroup>
+                <optgroup label="Valores Principales">
+                    <option value="Activos">Activos</option>
+                    <option value="Pasivos">Pasivos</option>
+                    <option value="Patrimonio">Patrimonio</option>
+                    <option value="Apalancamiento">Apalancamiento</option>
+                    <option value="Endeudamiento">Endeudamiento</option>
+                    <option value="Cant_Deudas">Cant. Deudas</option>
+                    <option value="BancoSaldo">Saldo Bancario</option>
+                    <option value="Cant_Bancos">Cant. Bancos</option>
+                    <option value="Bienes">Bienes</option>
+                    <option value="Cant_Bienes">Cant. Bienes</option>
+                    <option value="Inversiones">Inversiones</option>
+                    <option value="Cant_Inversiones">Cant. Inversiones</option>
+                    <option value="Ingresos">Ingresos</option>
+                    <option value="Cant_Ingresos">Cant. Ingresos</option>
+                </optgroup>
+                <optgroup label="Variaciones Absolutas">
+                    <option value="Activos Var. Abs.">Activos Var. Abs.</option>
+                    <option value="Pasivos Var. Abs.">Pasivos Var. Abs.</option>
+                    <option value="Patrimonio Var. Abs.">Patrimonio Var. Abs.</option>
+                    <option value="Apalancamiento Var. Abs.">Apalancamiento Var. Abs.</option>
+                    <option value="Endeudamiento Var. Abs.">Endeudamiento Var. Abs.</option>
+                    <option value="BancoSaldo Var. Abs.">BancoSaldo Var. Abs.</option>
+                    <option value="Bienes Var. Abs.">Bienes Var. Abs.</option>
+                    <option value="Inversiones Var. Abs.">Inversiones Var. Abs.</option>
+                    <option value="Ingresos Var. Abs.">Ingresos Var. Abs.</option>
+                </optgroup>
+                <optgroup label="Variaciones Relativas">
+                    <option value="Activos Var. Rel.">Activos Var. Rel.</option>
+                    <option value="Pasivos Var. Rel.">Pasivos Var. Rel.</option>
+                    <option value="Patrimonio Var. Rel.">Patrimonio Var. Rel.</option>
+                    <option value="Apalancamiento Var. Rel.">Apalancamiento Var. Rel.</option>
+                    <option value="Endeudamiento Var. Rel.">Endeudamiento Var. Rel.</option>
+                    <option value="BancoSaldo Var. Rel.">BancoSaldo Var. Rel.</option>
+                    <option value="Bienes Var. Rel.">Bienes Var. Rel.</option>
+                    <option value="Inversiones Var. Rel.">Inversiones Var. Rel.</option>
+                    <option value="Ingresos Var. Rel.">Ingresos Var. Rel.</option>
+                </optgroup>
             </select>
+            
+            <select id="operator" aria-label="Seleccionar operador de filtro" title="Operador de filtro">
+              <option value=">">Mayor que</option>
+              <option value="<">Menor que</option>
+              <option value="=">Igual a</option>
+              <option value=">=">Mayor o igual</option>
+              <option value="<=">Menor o igual</option>
+              <option value="between">Entre</option>
+              <option value="contains">Contiene</option>
+            </select>
+            
+            <input type="text" id="value1" placeholder="Valor">
+            <input type="text" id="value2" placeholder="y" style="display: none;">
+            
+            <button onclick="addFilter()"><i class="fa fa-filter"></i> Agregar Filtro</button>
+            <button onclick="clearFilters()" style="background-color: #dc3545; color: white;">Limpiar Filtros</button>
+            
+            <div style="margin-left: auto; background-color:rgb(0, 176, 15);">
+                <button onclick="changeDataSource()">Estado</button>
+                <select id="dataSource" aria-label="Seleccionar fuente de datos" title="Fuente de datos">
+                    <option value="src/data.json">Completo</option>
+                    <option value="src/fk1Data.json">Incompleto</option>
+                </select>
+            </div>
+        </div>
+        
+        
+        
+        <div class="table-scroll-container">
+            <table id="results">
+                <thead>
+                    <tr class="column-controls">
+    
+                        <th>
+                            <div class="column-controls-container">
+                                <button class="freeze-btn" onclick="toggleFreezeColumn(0)">
+                                    <i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i>
+                                </button>
+                                <button class="freeze-btn" onclick="showColumnStats('Nombre')">
+                                    <i class="material-icons" style="font-size:18px">equalizer</i>
+                                </button>
+                                <button onclick="quickFilter('Nombre')"><span class="sort-icon">↕</span></button>
+                            </div>
+                            <input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(0, this.value)">
+                        </th>
+    
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(1)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Año Declaración')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Año Declaración')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(1, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(2)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Compañía')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Compañía')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(2, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(3)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cargo')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cargo')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(3, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(4)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Usuario')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Usuario')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(4, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(5)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Activos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Activos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(5, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(6)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Pasivos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Pasivos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(6, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(7)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Patrimonio')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Patrimonio')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(7, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(8)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Apalancamiento')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Apalancamiento')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(8, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(9)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Endeudamiento')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Endeudamiento')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(9, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(10)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Deudas')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Deudas')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(10, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(11)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('BancoSaldo')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('BancoSaldo')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(11, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(12)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Bancos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Bancos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(12, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(13)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Bienes')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Bienes')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(13, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(14)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Bienes')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Bienes')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(14, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(15)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Inversiones')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Inversiones')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(15, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(16)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Inversiones')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Inversiones')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(16, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(17)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Ingresos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Ingresos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(17, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(18)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Ingresos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Ingresos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(18, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(19)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Activos Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Activos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(19, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(20)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Pasivos Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Pasivos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(20, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(21)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Patrimonio Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Patrimonio Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(21, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(22)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Apalancamiento Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Apalancamiento Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(22, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(23)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Endeudamiento Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Endeudamiento Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(23, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(24)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('BancoSaldo Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('BancoSaldo Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(24, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(25)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Bienes Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Bienes Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(25, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(26)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Inversiones Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Inversiones Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(26, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(27)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Ingresos Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Ingresos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(27, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(28)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Activos Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Activos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(28, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(29)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Pasivos Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Pasivos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(29, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(30)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Patrimonio Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Patrimonio Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(30, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(31)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Apalancamiento Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Apalancamiento Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(31, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(32)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Endeudamiento Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Endeudamiento Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(32, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(33)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('BancoSaldo Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('BancoSaldo Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(33, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(34)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Bienes Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Bienes Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(34, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(35)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Inversiones Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Inversiones Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(35, this.value)"></th>
+                        <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(36)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Ingresos Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Ingresos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(36, this.value)"></th>    
+                    </tr>
+                    <tr>
+                        <th>
+                            <button>Nombre</button>
+                        </th>
+                    
+                        <th><button>Año Declaración</button></th>
+                        <th><button>Compañía</button></th>
+                        <th><button>Cargo</button></th>
+                        <th><button>Usuario</button></th>
+                        <th><button>Activos</button></th>
+                        <th><button>Pasivos</button></th>
+                        <th><button>Patrimonio</button></th>
+                        <th><button>Apalancamiento</button></th>
+                        <th><button>Endeudamiento</button></th>
+                        <th><button>Cant_Deudas</button></th>
+                        <th><button>BancoSaldo</button></th>
+                        <th><button>Cant_Bancos</button></th>
+                        <th><button>Bienes</button></th>
+                        <th><button>Cant_Bienes</button></th>
+                        <th><button>Inversiones</button></th>
+                        <th><button>Cant_Inversiones</button></th>
+                        <th><button>Ingresos</button></th>
+                        <th><button>Cant_Ingresos</button></th>
+                        <th><button>Activos Var. Abs.</button></th>
+                        <th><button>Pasivos Var. Abs.</button></th>
+                        <th><button>Patrimonio Var. Abs.</button></th>
+                        <th><button>Apalancamiento Var. Abs.</button></th>
+                        <th><button>Endeudamiento Var. Abs.</button></th>
+                        <th><button>BancoSaldo Var. Abs.</button></th>
+                        <th><button>Bienes Var. Abs.</button></th>
+                        <th><button>Inversiones Var. Abs.</button></th>
+                        <th><button>Ingresos Var. Abs.</button></th>
+                        <th><button>Activos Var. Rel.</button></th>
+                        <th><button>Pasivos Var. Rel.</button></th>
+                        <th><button>Patrimonio Var. Rel.</button></th>
+                        <th><button>Apalancamiento Var. Rel.</button></th>
+                        <th><button>Endeudamiento Var. Rel.</button></th>
+                        <th><button>BancoSaldo Var. Rel.</button></th>
+                        <th><button>Bienes Var. Rel.</button></th>
+                        <th><button>Inversiones Var. Rel.</button></th>
+                        <th><button>Ingresos Var. Rel.</button></th>
+                        <th><button><i class="material-icons" style="font-size:24px">trending_up</i></button></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="35" class="loading">Cargando datos...</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
     </div>
-    
-    <div id="filters"></div>
-    
-    <div class="table-scroll-container">
-        <table id="results">
-            <thead>
-                <tr class="column-controls">
 
-                    <th>
-                        <div class="column-controls-container">
-                            <button class="freeze-btn" onclick="toggleFreezeColumn(0)">
-                                <i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i>
-                            </button>
-                            <button class="freeze-btn" onclick="showColumnStats('Nombre')">
-                                <i class="material-icons" style="font-size:18px">equalizer</i>
-                            </button>
-                            <button onclick="quickFilter('Nombre')"><span class="sort-icon">↕</span></button>
-                        </div>
-                        <input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(0, this.value)">
-                    </th>
+    <!-- Add the transactions tab content -->
+    <div id="transactions" class="tab-content">
+        <div class="filter-form">
+            <label for="pdfFolderUpload" class="file-upload-label">
+                <span class="file-upload-button">Seleccionar Carpeta con PDFs</span>
+                <input type="file" id="pdfFolderUpload" webkitdirectory directory multiple class="file-upload-input">
+            </label>
+            <span id="pdfUploadStatus" class="file-upload-status"></span>
+            
+            <div id="pdfPasswordContainer" style="display: none; margin-top: 10px;">
+                <div style="display: flex; gap: 10px; align-items: center;">
+                    <div class="password-input-group" style="flex: 1;">
+                        <input type="password" id="pdfPassword" placeholder="Contraseña del PDF" class="password-input">
+                        <span class="toggle-password" onclick="togglePassword('pdfPassword')">👁️</span>
+                    </div>
+                    <button id="analyzePdfButton" style="flex: 0 0 auto;">Analizar PDFs</button>
+                </div>
+                <div id="pdfPasswordError" class="error-message"></div>
+            </div>     
+        </div>
 
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(1)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Año Declaración')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Año Declaración')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(1, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(2)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Compañía')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Compañía')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(2, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(3)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cargo')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cargo')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(3, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(4)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Usuario')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Usuario')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(4, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(5)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Activos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Activos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(5, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(6)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Pasivos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Pasivos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(6, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(7)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Patrimonio')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Patrimonio')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(7, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(8)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Apalancamiento')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Apalancamiento')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(8, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(9)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Endeudamiento')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Endeudamiento')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(9, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(10)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Deudas')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Deudas')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(10, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(11)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('BancoSaldo')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('BancoSaldo')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(11, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(12)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Bancos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Bancos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(12, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(13)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Bienes')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Bienes')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(13, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(14)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Bienes')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Bienes')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(14, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(15)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Inversiones')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Inversiones')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(15, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(16)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Inversiones')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Inversiones')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(16, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(17)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Ingresos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Ingresos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(17, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(18)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Cant_Ingresos')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Cant_Ingresos')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(18, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(19)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Activos Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Activos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(19, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(20)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Pasivos Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Pasivos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(20, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(21)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Patrimonio Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Patrimonio Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(21, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(22)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Apalancamiento Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Apalancamiento Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(22, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(23)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Endeudamiento Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Endeudamiento Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(23, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(24)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('BancoSaldo Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('BancoSaldo Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(24, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(25)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Bienes Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Bienes Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(25, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(26)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Inversiones Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Inversiones Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(26, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(27)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Ingresos Var. Abs.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Ingresos Var. Abs.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(27, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(28)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Activos Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Activos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(28, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(29)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Pasivos Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Pasivos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(29, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(30)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Patrimonio Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Patrimonio Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(30, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(31)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Apalancamiento Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Apalancamiento Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(31, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(32)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Endeudamiento Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Endeudamiento Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(32, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(33)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('BancoSaldo Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('BancoSaldo Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(33, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(34)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Bienes Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Bienes Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(34, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(35)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Inversiones Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Inversiones Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(35, this.value)"></th>
-                    <th><div class="column-controls-container"><button class="freeze-btn" onclick="toggleFreezeColumn(36)"><i class="glyphicon glyphicon-pushpin" style="font-size:18px;"></i></button><button class="freeze-btn" onclick="showColumnStats('Ingresos Var. Rel.')"><i class="material-icons" style="font-size:18px">equalizer</i></button><button onclick="quickFilter('Ingresos Var. Rel.')"><span class="sort-icon">↕</span></button></div><input type="range" class="width-slider" min="50" max="300" value="120" oninput="resizeColumn(36, this.value)"></th>    
-                </tr>
-                <tr>
-                    <th>
-                        <button>Nombre</button>
-                    </th>
-                
-                    <th><button>Año Declaración</button></th>
-                    <th><button>Compañía</button></th>
-                    <th><button>Cargo</button></th>
-                    <th><button>Usuario</button></th>
-                    <th><button>Activos</button></th>
-                    <th><button>Pasivos</button></th>
-                    <th><button>Patrimonio</button></th>
-                    <th><button>Apalancamiento</button></th>
-                    <th><button>Endeudamiento</button></th>
-                    <th><button>Cant_Deudas</button></th>
-                    <th><button>BancoSaldo</button></th>
-                    <th><button>Cant_Bancos</button></th>
-                    <th><button>Bienes</button></th>
-                    <th><button>Cant_Bienes</button></th>
-                    <th><button>Inversiones</button></th>
-                    <th><button>Cant_Inversiones</button></th>
-                    <th><button>Ingresos</button></th>
-                    <th><button>Cant_Ingresos</button></th>
-                    <th><button>Activos Var. Abs.</button></th>
-                    <th><button>Pasivos Var. Abs.</button></th>
-                    <th><button>Patrimonio Var. Abs.</button></th>
-                    <th><button>Apalancamiento Var. Abs.</button></th>
-                    <th><button>Endeudamiento Var. Abs.</button></th>
-                    <th><button>BancoSaldo Var. Abs.</button></th>
-                    <th><button>Bienes Var. Abs.</button></th>
-                    <th><button>Inversiones Var. Abs.</button></th>
-                    <th><button>Ingresos Var. Abs.</button></th>
-                    <th><button>Activos Var. Rel.</button></th>
-                    <th><button>Pasivos Var. Rel.</button></th>
-                    <th><button>Patrimonio Var. Rel.</button></th>
-                    <th><button>Apalancamiento Var. Rel.</button></th>
-                    <th><button>Endeudamiento Var. Rel.</button></th>
-                    <th><button>BancoSaldo Var. Rel.</button></th>
-                    <th><button>Bienes Var. Rel.</button></th>
-                    <th><button>Inversiones Var. Rel.</button></th>
-                    <th><button>Ingresos Var. Rel.</button></th>
-                    <th><button><i class="material-icons" style="font-size:24px">trending_up</i></button></th>
-                </tr>
-            </thead>
-            <tbody>
-                <tr>
-                    <td colspan="35" class="loading">Cargando datos...</td>
-                </tr>
-            </tbody>
-        </table>
+        <div class="table-scroll-container">
+            <table id="transactionsResults">
+                <thead>
+                    <tr>
+                        <th>Archivo</th>
+                        <th>Nombre</th>
+                        <th># Tarjeta</th>
+                        <th>Autorización</th>
+                        <th>Fecha</th>
+                        <th>Descripción</th>
+                        <th>Valor</th>
+                        <th>Tasa Pactada</th>
+                        <th>Tasa EA</th>
+                        <th>Cargos/Abonos</th>
+                        <th>Saldo</th>
+                        <th>Cuotas</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td colspan="12" class="loading">Seleccione una carpeta con PDFs para analizar</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div> 
     </div>
 
     <!-- SheetJS for Excel export -->
@@ -1712,10 +1970,6 @@ h1 {
     background-color: #f0f5ff;
     outline: none;
     box-shadow: 0 0 0 2px rgba(11, 0, 162, 0.2);
-}
-
-#filters {
-    margin-bottom: 20px;
 }
 
 .filter-tag {
@@ -2353,6 +2607,45 @@ h1 {
     box-shadow: none;
 }
 
+/* Transactions Table Styles */
+#transactionsResults {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+#transactionsResults th {
+    background-color: #f8f9fa;
+    position: sticky;
+    top: 0;
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #ddd;
+}
+
+#transactionsResults td {
+    padding: 8px 12px;
+    border-bottom: 1px solid #eee;
+}
+
+#transactionsResults tr:hover {
+    background-color: #f5f5f5;
+}
+
+/* Make the table scrollable */
+#transactions .table-scroll-container {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+/* PDF Upload Specific Styles */
+#pdfPasswordContainer {
+    transition: all 0.3s ease;
+}
+
+#pdfLoadingBarContainer {
+    margin-top: 15px;
+}
+
 @media (max-width: 768px) {
     .filter-form select, 
     .filter-form input, 
@@ -2756,6 +3049,156 @@ function setupEventListeners() {
             passwordContainer.style.display = 'none'; // Hide both password fields
         }
     });
+
+    // Add to your setupEventListeners function:
+document.getElementById('pdfUpload').addEventListener('change', function(e) {
+    const statusElement = document.getElementById('pdfUploadStatus');
+    const passwordContainer = document.getElementById('pdfPasswordContainer');
+    
+    if (this.files.length > 0) {
+        statusElement.textContent = `Archivo seleccionado: ${this.files[0].name}`;
+        statusElement.style.color = '#0b00a2';
+        passwordContainer.style.display = 'block';
+    } else {
+        statusElement.textContent = '';
+        passwordContainer.style.display = 'none';
+    }
+});
+
+document.getElementById('analyzePdfButton').addEventListener('click', async function() {
+    const fileInput = document.getElementById('pdfUpload');
+    if (!fileInput.files.length) {
+        alert('Por favor seleccione un archivo PDF primero');
+        return;
+    }
+    
+    const password = document.getElementById('pdfPassword').value;
+    const statusElement = document.getElementById('pdfUploadStatus');
+    const loadingBarContainer = document.createElement('div');
+    loadingBarContainer.id = 'pdfLoadingBarContainer';
+    loadingBarContainer.style.cssText = 'width: 100%; background-color: #f1f1f1; padding: 3px; border-radius: 5px; margin: 10px 0; display: none;';
+    
+    const loadingBar = document.createElement('div');
+    loadingBar.id = 'pdfLoadingBar';
+    loadingBar.style.cssText = 'width: 0%; height: 20px; background-color: #00a231; border-radius: 3px; transition: width 0.3s;';
+    
+    const loadingText = document.createElement('div');
+    loadingText.id = 'pdfLoadingText';
+    loadingText.style.cssText = 'text-align: center; margin-top: 5px; font-size: 0.9rem; color: #333;';
+    loadingText.textContent = 'Analizando PDF...';
+    
+    loadingBarContainer.appendChild(loadingBar);
+    loadingBarContainer.appendChild(loadingText);
+    
+    const formContainer = document.querySelector('#transactions .filter-form');
+    formContainer.appendChild(loadingBarContainer);
+    
+    try {
+        loadingBarContainer.style.display = 'block';
+        loadingBar.style.width = '10%';
+        statusElement.textContent = 'Preparando análisis...';
+        
+        const formData = new FormData();
+        formData.append('file', fileInput.files[0]);
+        if (password) formData.append('password', password);
+        
+        const response = await fetch('http://localhost:8000/upload-pdf', {
+            method: 'POST',
+            body: formData
+        });
+        
+        loadingBar.style.width = '100%';
+        statusElement.textContent = 'Finalizando...';
+        
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || 'Error al procesar el PDF');
+        }
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            statusElement.textContent = 'PDF analizado correctamente!';
+            statusElement.style.color = 'green';
+            
+            // Load and display the transactions
+            await loadTransactionData(result.file);
+        } else {
+            throw new Error(result.message || 'No se encontraron transacciones en el PDF');
+        }
+    } catch (error) {
+        console.error('Error:', error);
+        statusElement.textContent = `Error: ${error.message}`;
+        statusElement.style.color = 'red';
+    } finally {
+        setTimeout(() => {
+            loadingBarContainer.style.display = 'none';
+            loadingBar.style.width = '0%';
+        }, 1000);
+    }
+});
+
+async function loadTransactionData(jsonFile) {
+    try {
+        const tbody = document.querySelector('#transactionsResults tbody');
+        tbody.innerHTML = '<tr><td colspan="12" class="loading">Cargando transacciones...</td></tr>';
+        
+        const response = await fetch(jsonFile);
+        if (!response.ok) throw new Error('Error al cargar los datos de transacciones');
+        
+        const transactions = await response.json();
+        
+        if (transactions.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="12">No se encontraron transacciones en el archivo</td></tr>';
+            return;
+        }
+        
+        tbody.innerHTML = transactions.map(tx => `
+            <tr>
+                <td>${tx.Archivo}</td>
+                <td>${tx.Nombre || ''}</td>
+                <td>${tx['Número de Tarjeta'] || ''}</td>
+                <td>${tx['Número de Autorización'] || ''}</td>
+                <td>${tx['Fecha de Transacción'] || ''}</td>
+                <td>${tx.Descripción || ''}</td>
+                <td>${tx['Valor Original'] || ''}</td>
+                <td>${tx['Tasa Pactada'] || ''}</td>
+                <td>${tx['Tasa EA Facturada'] || ''}</td>
+                <td>${tx['Cargos y Abonos'] || ''}</td>
+                <td>${tx['Saldo a Diferir'] || ''}</td>
+                <td>${tx.Cuotas || ''}</td>
+            </tr>
+        `).join('');
+        
+    } catch (error) {
+        console.error('Error:', error);
+        document.querySelector('#transactionsResults tbody').innerHTML = `
+            <tr>
+                <td colspan="12">Error al cargar transacciones: ${error.message}</td>
+            </tr>
+        `;
+    }
+}
+
+// Add tab switching functionality
+document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        // Hide all tab contents
+        document.querySelectorAll('.tab-content').forEach(content => {
+            content.classList.remove('active');
+        });
+        
+        // Deactivate all tab buttons
+        document.querySelectorAll('.tab').forEach(t => {
+            t.classList.remove('active');
+        });
+        
+        // Activate selected tab
+        const tabId = this.getAttribute('data-tab');
+        document.getElementById(tabId).classList.add('active');
+        this.classList.add('active');
+    });
+});
 }
 
 // excel upload fucntion
@@ -3982,17 +4425,19 @@ function createStructure {
 
     # Upgrade pip and install required packages
     python -m pip install --upgrade pip
-    python -m pip install pandas python-dotenv openpyxl plotly msoffcrypto-tool pdfplumber
+    python -m pip install pandas python-dotenv openpyxl plotly msoffcrypto-tool pdfplumber werkzeug xlrd
 
     # Always create subdirectories
     Write-Host "🏗️ Creating directory structure" -ForegroundColor $YELLOW
     $directories = @(
         "src",
+        "src/extractos"
         "static",
         "models",
         "tables/cats",
         "tables/nets",
-        "tables/trends"
+        "tables/trends",
+        "tables/transactions"
     )
     foreach ($dir in $directories) {
         New-Item -Path $dir -ItemType Directory -Force
@@ -4010,6 +4455,8 @@ function main {
     createCats
     createNets
     createTrends
+    createTransactions
+    createConflictscript
     createApp
     createIndex
 
