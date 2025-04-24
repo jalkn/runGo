@@ -1305,6 +1305,314 @@ if __name__ == "__main__":
 "@
 }
 
+function createConflictScripts {
+    Write-Host "🏗️ Creating Conflict Scripts" -ForegroundColor $YELLOW
+    
+    Set-Content -Path "models/conflicts.py" -Value @"
+import pandas as pd
+import os
+from openpyxl.utils import get_column_letter
+from openpyxl.styles import numbers
+
+def extract_specific_columns(input_file, output_file, custom_headers=None):
+    
+    try:
+        # Setup output directory
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        
+        # Read raw data (no automatic parsing)
+        df = pd.read_excel(input_file, header=None)
+        
+        # Column selection (first 11 + specified extras)
+        base_cols = list(range(11))  # Columns 0-10 (A-K)
+        extra_cols = [12,14,16,18,20,22,24,26,28]
+        selected_cols = [col for col in base_cols + extra_cols if col < df.shape[1]]
+        
+        # Extract data with headers
+        result = df.iloc[3:, selected_cols].copy()
+        result.columns = df.iloc[2, selected_cols].values
+        
+        # Apply custom headers if provided
+        if custom_headers is not None:
+            if len(custom_headers) != len(result.columns):
+                raise ValueError(f"Custom headers count ({len(custom_headers)}) doesn't match column count ({len(result.columns)})")
+            result.columns = custom_headers
+        
+        # Merge C,D,E,F → C (indices 2,3,4,5)
+        if all(c in selected_cols for c in [2,3,4,5]):
+            result.iloc[:, 2] = result.iloc[:, 2:6].astype(str).apply(' '.join, axis=1)
+            result.drop(result.columns[3:6], axis=1, inplace=True)
+            selected_cols = [c for c in selected_cols if c not in [3,4,5]] 
+            
+        # Capitalize "Nombre" column AFTER merging
+        if "Nombre" in result.columns:
+            result["Nombre"] = result["Nombre"].str.title()
+            
+        # Special handling for Column J (input index 9)
+        if 9 in selected_cols:
+            j_pos = selected_cols.index(9)  # Find its position in output
+            date_col = result.columns[j_pos]
+            
+            # Convert with European date format
+            result[date_col] = pd.to_datetime(
+                result[date_col],
+                dayfirst=True,
+                errors='coerce'
+            )
+            
+            # Save with Excel formatting
+            with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+                result.to_excel(writer, index=False)
+                
+                # Get the worksheet and format the date column
+                worksheet = writer.sheets['Sheet1']
+                date_col_letter = get_column_letter(j_pos + 1)
+                
+                # Apply date format to all cells in the column
+                for cell in worksheet[date_col_letter]:
+                    if cell.row == 1:  # Skip header
+                        continue
+                    cell.number_format = 'DD/MM/YYYY'
+                
+                # Auto-adjust columns
+                for idx, col in enumerate(result.columns):
+                    col_letter = get_column_letter(idx+1)
+                    worksheet.column_dimensions[col_letter].width = max(
+                        len(str(col))+2,
+                        result[col].astype(str).str.len().max()+2
+                    )
+            
+            print(f"Success! Output saved to: {output_file}")
+        
+        else:
+            print("Warning: Column J not found in selected columns")
+    
+    except Exception as e:
+        print(f"Error: {str(e)}")
+
+# Example usage with custom headers
+custom_headers = [
+    "ID", "# Documento", "Nombre", "1er Nombre", "1er Apellido", 
+    "2do Apellido", "Compañía", "Cargo", "Email", "Fecha de Inicio", 
+    "Q1", "Q2", "Q3", "Q4", "Q5",
+    "Q6", "Q7", "Q8", "Q9", "Q10"
+]
+
+extract_specific_columns(
+    input_file="src/conflictos.xls",
+    output_file="tables/conflicts.xlsx",
+    custom_headers=custom_headers
+)
+"@
+}
+
+function createIDScripts {
+    Write-Host "🏗️ Creating ID Scripts" -ForegroundColor $YELLOW
+    
+    Set-Content -Path "models/id.py" -Value @"
+import pandas as pd
+from pathlib import Path
+import warnings
+
+def process_excel_files(activos_file, retirados_file, output_file, column_names):
+   
+    # Suppress SettingWithCopyWarning
+    warnings.simplefilter(action='ignore', category=pd.errors.SettingWithCopyWarning)
+    
+    try:
+        # Create output directory if needed
+        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+        
+        # Function to load and standardize data from either file
+        def load_data(file_path, estado_value):
+            # Read Excel file
+            df = pd.read_excel(file_path, header=None, engine='openpyxl')
+            
+            # Validate minimum rows
+            if len(df) < 3:
+                raise ValueError(f"Input file {file_path} has less than 3 rows")
+                
+            # Extract headers and data
+            headers = df.iloc[2].tolist()
+            data = df.iloc[3:].copy()
+            data.columns = headers
+            
+            # Select required columns using .loc to avoid warnings
+            col_indices = {
+                'B': 1, 'I': 8, 'J': 9, 'K': 10,
+                'L': 11, 'O': 14, 'S': 18
+            }
+            
+            # Verify columns exist
+            missing_cols = [col for col, idx in col_indices.items() if idx >= len(headers)]
+            if missing_cols:
+                raise ValueError(f"Missing columns in {file_path}: {missing_cols}")
+            
+            # Create new DataFrame with selected columns to avoid view issues
+            selected_data = pd.DataFrame({
+                column_names['B']: data.iloc[:, col_indices['B']],
+                column_names['I']: data.iloc[:, col_indices['I']],
+                column_names['J']: data.iloc[:, col_indices['J']],
+                column_names['K']: data.iloc[:, col_indices['K']],
+                column_names['L']: data.iloc[:, col_indices['L']],
+                column_names['O']: data.iloc[:, col_indices['O']],
+                column_names['S']: data.iloc[:, col_indices['S']]
+            })
+            
+            # Concatenate name components safely
+            concat_cols = [column_names[col] for col in ['I', 'J', 'K', 'L']]
+            nombres = (
+                selected_data[concat_cols]
+                .fillna('')
+                .astype(str)
+                .apply(lambda x: ' '.join(x).strip(), axis=1)
+                .str.lower()
+                .str.title()
+            )
+            
+            # Create final DataFrame with all columns
+            result = pd.DataFrame({
+                column_names['B']: selected_data[column_names['B']],
+                'Nombre': nombres,
+                column_names['O']: selected_data[column_names['O']],
+                column_names['S']: selected_data[column_names['S']],
+                'Estado': estado_value
+            })
+            
+            return result
+        
+        # Load both datasets
+        df_activos = load_data(activos_file, 'Activo')
+        df_retirados = load_data(retirados_file, 'Retirado')
+        
+        # Combine datasets
+        combined_df = pd.concat([df_activos, df_retirados], ignore_index=True)
+        
+        # Select final output columns
+        output_cols = [
+            column_names['B'],  # # Documento
+            'Nombre',          # Full name
+            column_names['O'],  # Cargo
+            column_names['S'],  # Compañía
+            'Estado'           # Activo/Retirado
+        ]
+        
+        # Save to Excel
+        with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+            combined_df[output_cols].to_excel(writer, index=False)
+            
+        print(f"Successfully processed and combined files:\n"
+              f"Active employees: {activos_file}\n"
+              f"Retired employees: {retirados_file}\n"
+              f"Output: {output_file}\n"
+              f"Total records: {len(combined_df)} (Active: {len(df_activos)}, Retired: {len(df_retirados)})")
+        
+    except Exception as e:
+        print(f"Error processing files: {str(e)}")
+        raise
+
+if __name__ == "__main__":
+    # Configuration
+    CONFIG = {
+        'activos_file': "src/ACTIVOS.xlsx",      # Current active employees
+        'retirados_file': "src/RETIRADOS.xlsx",  # New retired employees
+        'output_file': "tables/IDS.xlsx",
+        'column_names': {
+            'B': '# Documento',
+            'I': 'Nombre1',
+            'J': 'Nombre2', 
+            'K': 'Nombre3',
+            'L': 'Nombre4',
+            'O': 'Cargo',
+            'S': 'Compañía'
+        }
+    }
+    
+    # Run processing
+    process_excel_files(
+        activos_file=CONFIG['activos_file'],
+        retirados_file=CONFIG['retirados_file'],
+        output_file=CONFIG['output_file'],
+        column_names=CONFIG['column_names']
+    )
+"@
+}
+
+function createJoinScripts {
+    Write-Host "🏗️ Creating App" -ForegroundColor $YELLOW
+    
+    Set-Content -Path "models/join.py" -Value @"
+import pandas as pd
+from pathlib import Path
+
+def merge_trends_data(ids_file, trends_file, output_file):
+    """
+    Merge trends data with employee IDs:
+    - Keeps all records from trends.xlsx
+    - Adds # Documento from matching records in IDS_COMPLETO.xlsx
+    - Matches on Nombre, Cargo, and Compañía
+    """
+    try:
+        # Create output directory if needed
+        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+        
+        # Read both files
+        df_ids = pd.read_excel(ids_file, engine='openpyxl')
+        df_trends = pd.read_excel(trends_file, engine='openpyxl')
+        
+        # Prepare merge keys - ensure consistent case and whitespace
+        for df in [df_ids, df_trends]:
+            df['merge_key'] = (
+                df['Nombre'].str.strip().str.lower() + '|' +
+                df['Cargo'].str.strip().str.lower() + '|' +
+                df['Compañía'].str.strip().str.lower()
+            )
+        
+        # Perform left join (keep all trends records)
+        merged_df = pd.merge(
+            left=df_trends,
+            right=df_ids[['merge_key', '# Documento']],
+            how='left',
+            on='merge_key'
+        )
+        
+        # Clean up - drop the merge key and reorder columns
+        merged_df = merged_df.drop(columns=['merge_key'])
+        cols = ['# Documento'] + [col for col in merged_df.columns if col != '# Documento']
+        merged_df = merged_df[cols]
+        
+        # Save to Excel
+        with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+            merged_df.to_excel(writer, index=False)
+            
+        print(f"Successfully merged files:\n"
+              f"IDS file: {ids_file}\n"
+              f"Trends file: {trends_file}\n"
+              f"Output: {output_file}\n"
+              f"Total records: {len(merged_df)}\n"
+              f"Records with matched ID: {merged_df['# Documento'].notna().sum()}")
+        
+    except Exception as e:
+        print(f"Error merging files: {str(e)}")
+        raise
+
+if __name__ == "__main__":
+    # Configuration
+    CONFIG = {
+        'ids_file': "tables/IDS.xlsx",  # Current combined file
+        'trends_file': "tables/trends/trends.xlsx",       # New trends data
+        'output_file': "tables/idTrends.xlsx"  # Output file
+    }
+    
+    # Run merging
+    merge_trends_data(
+        ids_file=CONFIG['ids_file'],
+        trends_file=CONFIG['trends_file'],
+        output_file=CONFIG['output_file']
+    )
+"@
+}
+
 function createIndex {
 Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     # html
