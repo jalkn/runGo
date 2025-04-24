@@ -4290,7 +4290,7 @@ function createStructure {
 
     # Upgrade pip and install required packages
     python -m pip install --upgrade pip
-    python -m pip install pandas python-dotenv openpyxl plotly msoffcrypto-tool pdfplumber
+    python -m pip install pandas python-dotenv openpyxl plotly msoffcrypto-tool pdfplumber warnings pathlib
 
     # Always create subdirectories
     Write-Host "🏗️ Creating directory structure" -ForegroundColor $YELLOW
