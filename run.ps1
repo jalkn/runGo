@@ -1538,19 +1538,19 @@ if __name__ == "__main__":
 "@
 }
 
-function createMerge {
-    Write-Host "🏗️ Creating Merge" -ForegroundColor $YELLOW
+function createIDtrends {
+    Write-Host "🏗️ Creating ID Trends" -ForegroundColor $YELLOW
     
-    Set-Content -Path "models/merge.py" -Value @"
+    Set-Content -Path "models/idTrends.py" -Value @"
 import pandas as pd
 from pathlib import Path
 
 def merge_trends_data(ids_file, trends_file, output_file):
     """
-    Merge trends data with employee IDs:
+    Merge trends data with employee IDs using first-letter matching:
     - Keeps all records from trends.xlsx
-    - Adds # Documento from matching records in IDS_COMPLETO.xlsx
-    - Matches on Nombre, Cargo, and Compañía
+    - Adds # Documento from IDS.xlsx
+    - Matches on first letters of Nombre, Cargo, and Compañía
     """
     try:
         # Create output directory if needed
@@ -1560,12 +1560,12 @@ def merge_trends_data(ids_file, trends_file, output_file):
         df_ids = pd.read_excel(ids_file, engine='openpyxl')
         df_trends = pd.read_excel(trends_file, engine='openpyxl')
         
-        # Prepare merge keys - ensure consistent case and whitespace
+        # Create first-letter merge keys
         for df in [df_ids, df_trends]:
             df['merge_key'] = (
-                df['Nombre'].str.strip().str.lower() + '|' +
-                df['Cargo'].str.strip().str.lower() + '|' +
-                df['Compañía'].str.strip().str.lower()
+                df['Nombre'].str[0].str.lower() + '|' +
+                df['Cargo'].str[0].str.lower() + '|' +
+                df['Compañía'].str[0].str.lower()
             )
         
         # Perform left join (keep all trends records)
@@ -1576,6 +1576,9 @@ def merge_trends_data(ids_file, trends_file, output_file):
             on='merge_key'
         )
         
+        # Handle potential duplicates - keep first match
+        merged_df = merged_df.drop_duplicates(subset=df_trends.columns.tolist(), keep='first')
+        
         # Clean up - drop the merge key and reorder columns
         merged_df = merged_df.drop(columns=['merge_key'])
         cols = ['# Documento'] + [col for col in merged_df.columns if col != '# Documento']
@@ -1585,7 +1588,7 @@ def merge_trends_data(ids_file, trends_file, output_file):
         with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
             merged_df.to_excel(writer, index=False)
             
-        print(f"Successfully merged files:\n"
+        print(f"Successfully merged files using first-letter matching:\n"
               f"IDS file: {ids_file}\n"
               f"Trends file: {trends_file}\n"
               f"Output: {output_file}\n"
@@ -1609,6 +1612,84 @@ if __name__ == "__main__":
         ids_file=CONFIG['ids_file'],
         trends_file=CONFIG['trends_file'],
         output_file=CONFIG['output_file']
+    )
+"@
+}
+
+function createINtrends {
+    Write-Host "🏗️ Creating ID Trends" -ForegroundColor $YELLOW
+    
+    Set-Content -Path "models/inTrends.py" -Value @"
+import pandas as pd
+from pathlib import Path
+
+def join_conflicts_data(trends_file, conflicts_file, output_file, how='left'):
+    """
+    Join trends data with conflicts data using different join types:
+    - Uses # Documento as the join key
+    - Keeps all columns from both files
+    - Handles duplicate column names
+    - Converts join key to consistent type (string)
+    - Supports join types: 'left', 'right', 'inner', 'outer'
+    - Saves as inTrends.xlsx
+    """
+    try:
+        # Create output directory if needed
+        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
+        
+        # Read both files
+        df_trends = pd.read_excel(trends_file, engine='openpyxl')
+        df_conflicts = pd.read_excel(conflicts_file, engine='openpyxl')
+        
+        # Check if # Documento exists in both files
+        if '# Documento' not in df_trends.columns or '# Documento' not in df_conflicts.columns:
+            raise ValueError("# Documento column missing in one or both input files")
+        
+        # Convert '# Documento' columns to same type (string)
+        df_trends['# Documento'] = df_trends['# Documento'].astype(str)
+        df_conflicts['# Documento'] = df_conflicts['# Documento'].astype(str)
+        
+        # Perform the join operation
+        joined_df = pd.merge(
+            left=df_trends,
+            right=df_conflicts,
+            how=how,  # Type of join: 'left', 'right', 'inner', 'outer'
+            on='# Documento',
+            suffixes=('_trends', '_conflicts')
+        )
+        
+        # Save to Excel
+        with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
+            joined_df.to_excel(writer, index=False)
+            
+        print(f"Successfully joined files with '{how}' join:\n"
+              f"Trends file: {trends_file}\n"
+              f"Conflicts file: {conflicts_file}\n"
+              f"Output: {output_file}\n"
+              f"Total records: {len(joined_df)}\n"
+              f"Records from trends: {len(df_trends)}\n"
+              f"Records from conflicts: {len(df_conflicts)}\n"
+              f"Join type: {how}")
+        
+    except Exception as e:
+        print(f"Error joining files: {str(e)}")
+        raise
+
+if __name__ == "__main__":
+    # Configuration
+    CONFIG = {
+        'trends_file': "tables/idTrends.xlsx",  # Current trends file
+        'conflicts_file': "tables/conflicts.xlsx",      # Conflicts data
+        'output_file': "tables/inTrends.xlsx",        # Output file
+        'join_type': "left"  # Can be 'left', 'right', 'inner', 'outer'
+    }
+    
+    # Run joining
+    join_conflicts_data(
+        trends_file=CONFIG['trends_file'],
+        conflicts_file=CONFIG['conflicts_file'],
+        output_file=CONFIG['output_file'],
+        how=CONFIG['join_type']
     )
 "@
 }
@@ -4319,6 +4400,8 @@ function main {
     createNets
     createTrends
     createIDScript
+    createIDtrends
+    createINtrends
     createConflictScript
     createMerge
     createApp
@@ -4326,6 +4409,12 @@ function main {
 
     #generate periodoBR
     python models/period.py
+
+    #generate Join between trends and conflicts
+    python conflicts.py
+    python ids.py
+    python idTrends.py
+    python inTrends.py
 
     Write-Host "🏗️ The framework is set" -ForegroundColor $YELLOW
     Write-Host "🏗️ Opening index.html in browser..." -ForegroundColor $GREEN
