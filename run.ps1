@@ -1305,8 +1305,8 @@ if __name__ == "__main__":
 "@
 }
 
-function createConflictScripts {
-    Write-Host "🏗️ Creating Conflict Scripts" -ForegroundColor $YELLOW
+function createConflictScript {
+    Write-Host "🏗️ Creating Conflict Script" -ForegroundColor $YELLOW
     
     Set-Content -Path "models/conflicts.py" -Value @"
 import pandas as pd
@@ -1406,10 +1406,10 @@ extract_specific_columns(
 "@
 }
 
-function createIDScripts {
-    Write-Host "🏗️ Creating ID Scripts" -ForegroundColor $YELLOW
+function createIDScript {
+    Write-Host "🏗️ Creating ID Script" -ForegroundColor $YELLOW
     
-    Set-Content -Path "models/id.py" -Value @"
+    Set-Content -Path "models/ids.py" -Value @"
 import pandas as pd
 from pathlib import Path
 import warnings
@@ -1538,10 +1538,10 @@ if __name__ == "__main__":
 "@
 }
 
-function createJoinScripts {
-    Write-Host "🏗️ Creating App" -ForegroundColor $YELLOW
+function createMerge {
+    Write-Host "🏗️ Creating Merge" -ForegroundColor $YELLOW
     
-    Set-Content -Path "models/join.py" -Value @"
+    Set-Content -Path "models/merge.py" -Value @"
 import pandas as pd
 from pathlib import Path
 
@@ -4318,6 +4318,9 @@ function main {
     createCats
     createNets
     createTrends
+    createIDScript
+    createConflictScript
+    createMerge
     createApp
     createIndex
 
