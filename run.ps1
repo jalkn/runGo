@@ -1617,7 +1617,7 @@ if __name__ == "__main__":
 }
 
 function createINtrends {
-    Write-Host "🏗️ Creating ID Trends" -ForegroundColor $YELLOW
+    Write-Host "🏗️ Merging Trends/Conflicts" -ForegroundColor $YELLOW
     
     Set-Content -Path "models/inTrends.py" -Value @"
 import pandas as pd
@@ -4371,7 +4371,7 @@ function createStructure {
 
     # Upgrade pip and install required packages
     python -m pip install --upgrade pip
-    python -m pip install pandas python-dotenv openpyxl plotly msoffcrypto-tool pdfplumber warnings pathlib
+    python -m pip install pandas python-dotenv openpyxl plotly msoffcrypto-tool pdfplumber warnings pathlib levenshtein django djangorestframework
 
     # Always create subdirectories
     Write-Host "🏗️ Creating directory structure" -ForegroundColor $YELLOW
@@ -4403,7 +4403,6 @@ function main {
     createIDtrends
     createINtrends
     createConflictScript
-    createMerge
     createApp
     createIndex
 
@@ -4411,10 +4410,10 @@ function main {
     python models/period.py
 
     #generate Join between trends and conflicts
-    python conflicts.py
-    python ids.py
-    python idTrends.py
-    python inTrends.py
+    python models/conflicts.py
+    python models/ids.py
+    python models/idTrends.py
+    python models/inTrends.py
 
     Write-Host "🏗️ The framework is set" -ForegroundColor $YELLOW
     Write-Host "🏗️ Opening index.html in browser..." -ForegroundColor $GREEN
