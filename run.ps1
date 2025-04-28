@@ -1753,7 +1753,8 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
                 </div>
     
     
-            <button onclick="exportToExcel()" style="margin-left: auto; background-color:rgb(0, 176, 15);" class="fa fa-file-excel-o"> Exportar a Excel</button>
+                <button onclick="exportToExcel()" style="margin-left: auto; background-color:rgb(0, 176, 15);" class="fa fa-file-excel-o"> Exportar a Excel</button>
+                <button onclick="exportFrozenColumnsToExcel()" style="background-color:rgb(0, 176, 15);" class="fa fa-file-excel-o"> Exportar columnas congeladas</button>
             <div id="passwordError" class="error-message"></div>
         </div>
     </div>
@@ -4358,6 +4359,79 @@ function exportToExcel() {
     
     // Export to file
     XLSX.writeFile(workbook, 'datos_filtrados.xlsx');
+}
+
+function exportFrozenColumnsToExcel() {
+    if (filteredData.length === 0) {
+        alert('No hay datos para exportar');
+        return;
+    }
+    
+    if (frozenColumns.length === 0) {
+        alert('No hay columnas congeladas para exportar');
+        return;
+    }
+    
+    // Create a mapping of column indices to column names
+    const columnMap = {
+        0: 'Nombre',
+        1: 'Año Declaración',
+        2: 'Compañía',
+        3: 'Cargo',
+        4: 'Usuario',
+        5: 'Activos',
+        6: 'Pasivos',
+        7: 'Patrimonio',
+        8: 'Apalancamiento',
+        9: 'Endeudamiento',
+        10: 'Cant_Deudas',
+        11: 'BancoSaldo',
+        12: 'Cant_Bancos',
+        13: 'Bienes',
+        14: 'Cant_Bienes',
+        15: 'Inversiones',
+        16: 'Cant_Inversiones',
+        17: 'Ingresos',
+        18: 'Cant_Ingresos',
+        19: 'Activos Var. Abs.',
+        20: 'Pasivos Var. Abs.',
+        21: 'Patrimonio Var. Abs.',
+        22: 'Apalancamiento Var. Abs.',
+        23: 'Endeudamiento Var. Abs.',
+        24: 'BancoSaldo Var. Abs.',
+        25: 'Bienes Var. Abs.',
+        26: 'Inversiones Var. Abs.',
+        27: 'Ingresos Var. Abs.',
+        28: 'Activos Var. Rel.',
+        29: 'Pasivos Var. Rel.',
+        30: 'Patrimonio Var. Rel.',
+        31: 'Apalancamiento Var. Rel.',
+        32: 'Endeudamiento Var. Rel.',
+        33: 'BancoSaldo Var. Rel.',
+        34: 'Bienes Var. Rel.',
+        35: 'Inversiones Var. Rel.',
+        36: 'Ingresos Var. Rel.'
+    };
+    
+    // Get the column names for frozen columns
+    const frozenColumnNames = frozenColumns.map(colIndex => columnMap[colIndex]);
+    
+    // Filter the data to include only frozen columns
+    const exportData = filteredData.map(item => {
+        const filteredItem = {};
+        frozenColumnNames.forEach(colName => {
+            filteredItem[colName] = item[colName];
+        });
+        return filteredItem;
+    });
+    
+    // Create worksheet
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Columnas Congeladas");
+    
+    // Export to file
+    XLSX.writeFile(workbook, 'columnas_congeladas.xlsx');
 }
 '@
 }
