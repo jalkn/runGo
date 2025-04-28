@@ -4445,7 +4445,7 @@ function createStructure {
 
     # Upgrade pip and install required packages
     python -m pip install --upgrade pip
-    python -m pip install pandas python-dotenv openpyxl plotly msoffcrypto-tool pdfplumber warnings pathlib levenshtein django djangorestframework
+    python -m pip install pandas python-dotenv openpyxl plotly msoffcrypto-tool pdfplumber warnings pathlib levenshtein
 
     # Always create subdirectories
     Write-Host "🏗️ Creating directory structure" -ForegroundColor $YELLOW
@@ -4460,6 +4460,57 @@ function createStructure {
     foreach ($dir in $directories) {
         New-Item -Path $dir -ItemType Directory -Force
     }
+
+}
+
+function migratoDjango {
+    Write-Host "🏗️ Creating Django Migration" -ForegroundColor $YELLOW
+
+# Install Python packages
+python -m pip install django whitenoise django-bootstrap-v5
+
+# Start Django project
+django-admin startproject arpa
+
+# Change directory
+cd arpa
+
+# Start new app
+python manage.py startapp bienesyrentas
+
+# Create bienesyrentas views.py
+@"
+from django.shortcuts import render
+from django.http import HttpResponse
+
+def bienesyrentas(request):
+    return HttpResponse("Hello world!")
+"@ | Out-File -FilePath "bienesyrentas/views.py" -Encoding utf8
+
+# Create bienesyrentas urls.py
+@"
+from django.urls import path
+from . import views
+
+urlpatterns = [
+    path('', views.bienesyrentas, name='home'),  # Add this line for root path
+    path('bienesyrentas/', views.bienesyrentas, name='bienesyrentas'),
+]
+"@ | Out-File -FilePath "bienesyrentas/urls.py" -Encoding utf8
+
+# Create arpa urls.py
+@"
+from django.contrib import admin
+from django.urls import include, path
+
+urlpatterns = [
+    path('bienesyrentas/', include('bienesyrentas.urls')),
+    path('admin/', admin.site.urls),
+    path('', include('bienesyrentas.urls')), 
+]
+"@ | Out-File -FilePath "arpa/urls.py" -Encoding utf8
+
+#python manage.py runserver
 
 }
 
@@ -4492,6 +4543,8 @@ function main {
     Write-Host "🏗️ The framework is set" -ForegroundColor $YELLOW
     Write-Host "🏗️ Opening index.html in browser..." -ForegroundColor $GREEN
     
+    migratoDjango
+    cd ..
     python app.py
 
 }
