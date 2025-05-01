@@ -4522,8 +4522,8 @@ function main {
     Write-Host "🏗️ The framework is set" -ForegroundColor $YELLOW
     Write-Host "🏗️ Opening index.html in browser..." -ForegroundColor $GREEN
     
-    migratoDjango
-    cd ..
+    #migratoDjango
+    #cd ..
     python app.py
 
 }
