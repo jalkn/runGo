@@ -1296,25 +1296,25 @@ def start_server(port=8000):
         httpd.serve_forever()
 
 def main():
-    """Automates the process of generating tables and opening index.html in a browser."""
+    """Automates the process of generating tables and opening main.html in a browser."""
 
     print("Hold CTRL and click http://localhost:8000/")
 
-    # Get the absolute path to index.html
-    index_path = os.path.abspath("index.html")
+    # Get the absolute path to main.html
+    index_path = os.path.abspath("main.html")
 
-    # Check if index.html exists
+    # Check if main.html exists
     if os.path.exists(index_path):
         # Start the HTTP server in a separate thread
         server_thread = threading.Thread(target=start_server)
         server_thread.daemon = True  # Allow the main thread to exit even if the server is running
         server_thread.start()
 
-        # Open index.html in the default browser
+        # Open main.html in the default browser
         webbrowser.open("http://localhost:8000")  # Open via the server URL
     else:
-        print("Error: index.html not found in the current directory.")
-        return # exit the program if index.html doesn't exist
+        print("Error: main.html not found in the current directory.")
+        return # exit the program if main.html doesn't exist
 
     # Keep the main thread alive (optional) or perform other tasks
     input("Press Enter to stop the server and exit...\n")  #Wait for user input to terminate
@@ -1327,7 +1327,7 @@ if __name__ == "__main__":
 function createIndex {
 Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     # html
-    Set-Content -Path "index.html" -Value @"
+    Set-Content -Path "main.html" -Value @"
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -4103,7 +4103,7 @@ function main {
     python models/period.py
 
     Write-Host "🏗️ The framework is set" -ForegroundColor $YELLOW
-    Write-Host "🏗️ Opening index.html in browser..." -ForegroundColor $GREEN
+    Write-Host "🏗️ Opening main.html in browser..." -ForegroundColor $GREEN
     
     python app.py
 
