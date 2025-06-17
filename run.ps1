@@ -647,11 +647,11 @@ def run_all_analyses():
     file_path = 'src/data.xlsx'
     periodo_file_path = 'src/periodoBR.xlsx'
     
-    analyze_banks(file_path, 'tables/cats/banks.xlsx', periodo_file_path)
-    analyze_debts(file_path, 'tables/cats/debts.xlsx', periodo_file_path)
-    analyze_goods(file_path, 'tables/cats/goods.xlsx', periodo_file_path)
-    analyze_incomes(file_path, 'tables/cats/incomes.xlsx', periodo_file_path)
-    analyze_investments(file_path, 'tables/cats/investments.xlsx', periodo_file_path)
+    analyze_banks(file_path, 'src/banks.xlsx', periodo_file_path)
+    analyze_debts(file_path, 'src/debts.xlsx', periodo_file_path)
+    analyze_goods(file_path, 'src/goods.xlsx', periodo_file_path)
+    analyze_incomes(file_path, 'src/incomes.xlsx', periodo_file_path)
+    analyze_investments(file_path, 'src/investments.xlsx', periodo_file_path)
 
 if __name__ == "__main__":
     run_all_analyses()
@@ -889,42 +889,42 @@ def run_all_analyses():
     """Run all analyses in sequence with default file paths"""
     # Individual analyses
     bank_summary = analyze_banks(
-        'tables/cats/banks.xlsx',
-        'tables/nets/bankNets.xlsx'
+        'src/banks.xlsx',
+        'src/bankNets.xlsx'
     )
     
     debt_summary = analyze_debts(
-        'tables/cats/debts.xlsx',
-        'tables/nets/debtNets.xlsx'
+        'src/debts.xlsx',
+        'src/debtNets.xlsx'
     )
     
     goods_summary = analyze_goods(
-        'tables/cats/goods.xlsx',
-        'tables/nets/goodNets.xlsx'
+        'src/goods.xlsx',
+        'src/goodNets.xlsx'
     )
     
     income_summary = analyze_incomes(
-        'tables/cats/incomes.xlsx',
-        'tables/nets/incomeNets.xlsx'
+        'src/incomes.xlsx',
+        'src/incomeNets.xlsx'
     )
     
     invest_summary = analyze_investments(
-        'tables/cats/investments.xlsx',
-        'tables/nets/investNets.xlsx'
+        'src/investments.xlsx',
+        'src/investNets.xlsx'
     )
     
     # Combined analyses
     assets_summary = calculate_assets(
-        'tables/nets/bankNets.xlsx',
-        'tables/nets/goodNets.xlsx',
-        'tables/nets/investNets.xlsx',
-        'tables/nets/assetNets.xlsx'
+        'src/bankNets.xlsx',
+        'src/goodNets.xlsx',
+        'src/investNets.xlsx',
+        'src/assetNets.xlsx'
     )
     
     net_worth_summary = calculate_net_worth(
-        'tables/nets/debtNets.xlsx',
-        'tables/nets/assetNets.xlsx',
-        'tables/nets/worthNets.xlsx'
+        'src/debtNets.xlsx',
+        'src/assetNets.xlsx',
+        'src/worthNets.xlsx'
     )
     
     return {
@@ -1089,7 +1089,24 @@ def calculate_yearly_variations(df):
     
     return df
 
-def save_results(df, excel_filename="tables/trends/trends.xlsx", json_filename=None):
+def calculate_sudden_wealth_increase(df):
+    """Calculate sudden wealth increase rate (Aum. Pat. Subito) as decimal with 1 decimal place"""
+    df = df.sort_values(['Usuario', 'Año Declaración'])
+    
+    # Calculate total wealth (Activo + Patrimonio)
+    df['Capital'] = df['Activos'] + df['Patrimonio']
+    
+    # Calculate year-to-year change as decimal
+    df['Aum. Pat. Subito'] = df.groupby('Usuario')['Capital'].pct_change(fill_method=None)
+    
+    # Format as decimal (1 place) with trend symbol
+    df['Aum. Pat. Subito'] = df['Aum. Pat. Subito'].apply(
+        lambda x: f"{x:.1f} {get_trend_symbol(f'{x*100:.1f}%')}" if not pd.isna(x) else "N/A ➡️"
+    )
+    
+    return df
+
+def save_results(df, excel_filename="src/trends.xlsx", json_filename=None):
     """Save results to Excel and optionally JSON."""
     try:
         df.to_excel(excel_filename, index=False)
@@ -1101,11 +1118,12 @@ def save_results(df, excel_filename="tables/trends/trends.xlsx", json_filename=N
     except Exception as e:
         print(f"Error saving file: {e}")
 
+# Then modify the main() function to include this calculation:
 def main():
     """Main function to process all data and generate analysis files."""
     try:
         # Process worth data
-        df_worth = pd.read_excel("tables/nets/worthNets.xlsx")
+        df_worth = pd.read_excel("src/worthNets.xlsx")
         df_worth = df_worth.rename(columns={
             'Total Activos': 'Activos',
             'Total Pasivos': 'Pasivos',
@@ -1114,6 +1132,7 @@ def main():
         
         df_worth = calculate_leverage(df_worth)
         df_worth = calculate_debt_level(df_worth)
+        df_worth = calculate_sudden_wealth_increase(df_worth)  # Add this line
         
         for column in ['Activos', 'Pasivos', 'Patrimonio', 'Apalancamiento', 'Endeudamiento']:
             df_worth = calculate_variation(df_worth, column)
@@ -1121,11 +1140,11 @@ def main():
         df_worth = embed_trend_symbols(df_worth, ['Activos', 'Pasivos', 'Patrimonio', 'Apalancamiento', 'Endeudamiento'])
         
         # Process asset data
-        df_assets = pd.read_excel("tables/nets/assetNets.xlsx")
+        df_assets = pd.read_excel("src/assetNets.xlsx")
         df_assets_processed = process_asset_data(df_assets)
         
         # Process income data
-        df_income = pd.read_excel("tables/nets/incomeNets.xlsx")
+        df_income = pd.read_excel("src/incomeNets.xlsx")
         df_income_processed = process_income_data(df_income)
         
         # Merge all data
@@ -1133,11 +1152,11 @@ def main():
         df_combined = pd.merge(df_combined, df_income_processed, on=['Usuario', 'Año Declaración'], how='left')
         
         # Save basic trends
-        save_results(df_combined, "tables/trends/trends.xlsx")
+        save_results(df_combined, "src/trends.xlsx")
         
         # Calculate and save yearly variations
         df_yearly = calculate_yearly_variations(df_combined)
-        save_results(df_yearly, "tables/trends/overTrends.xlsx", "src/data.json")
+        save_results(df_yearly, "src/overTrends.xlsx", "src/data.json")
         
     except FileNotFoundError as e:
         print(f"Error: Required file not found - {e}")
@@ -1305,395 +1324,6 @@ if __name__ == "__main__":
 "@
 }
 
-function createConflictScript {
-    Write-Host "🏗️ Creating Conflict Script" -ForegroundColor $YELLOW
-    
-    Set-Content -Path "models/conflicts.py" -Value @"
-import pandas as pd
-import os
-from openpyxl.utils import get_column_letter
-from openpyxl.styles import numbers
-
-def extract_specific_columns(input_file, output_file, custom_headers=None):
-    
-    try:
-        # Setup output directory
-        os.makedirs(os.path.dirname(output_file), exist_ok=True)
-        
-        # Read raw data (no automatic parsing)
-        df = pd.read_excel(input_file, header=None)
-        
-        # Column selection (first 11 + specified extras)
-        base_cols = list(range(11))  # Columns 0-10 (A-K)
-        extra_cols = [12,14,16,18,20,22,24,26,28]
-        selected_cols = [col for col in base_cols + extra_cols if col < df.shape[1]]
-        
-        # Extract data with headers
-        result = df.iloc[3:, selected_cols].copy()
-        result.columns = df.iloc[2, selected_cols].values
-        
-        # Apply custom headers if provided
-        if custom_headers is not None:
-            if len(custom_headers) != len(result.columns):
-                raise ValueError(f"Custom headers count ({len(custom_headers)}) doesn't match column count ({len(result.columns)})")
-            result.columns = custom_headers
-        
-        # Merge C,D,E,F → C (indices 2,3,4,5)
-        if all(c in selected_cols for c in [2,3,4,5]):
-            result.iloc[:, 2] = result.iloc[:, 2:6].astype(str).apply(' '.join, axis=1)
-            result.drop(result.columns[3:6], axis=1, inplace=True)
-            selected_cols = [c for c in selected_cols if c not in [3,4,5]] 
-            
-        # Capitalize "Nombre" column AFTER merging
-        if "Nombre" in result.columns:
-            result["Nombre"] = result["Nombre"].str.title()
-            
-        # Special handling for Column J (input index 9)
-        if 9 in selected_cols:
-            j_pos = selected_cols.index(9)  # Find its position in output
-            date_col = result.columns[j_pos]
-            
-            # Convert with European date format
-            result[date_col] = pd.to_datetime(
-                result[date_col],
-                dayfirst=True,
-                errors='coerce'
-            )
-            
-            # Save with Excel formatting
-            with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
-                result.to_excel(writer, index=False)
-                
-                # Get the worksheet and format the date column
-                worksheet = writer.sheets['Sheet1']
-                date_col_letter = get_column_letter(j_pos + 1)
-                
-                # Apply date format to all cells in the column
-                for cell in worksheet[date_col_letter]:
-                    if cell.row == 1:  # Skip header
-                        continue
-                    cell.number_format = 'DD/MM/YYYY'
-                
-                # Auto-adjust columns
-                for idx, col in enumerate(result.columns):
-                    col_letter = get_column_letter(idx+1)
-                    worksheet.column_dimensions[col_letter].width = max(
-                        len(str(col))+2,
-                        result[col].astype(str).str.len().max()+2
-                    )
-            
-            print(f"Success! Output saved to: {output_file}")
-        
-        else:
-            print("Warning: Column J not found in selected columns")
-    
-    except Exception as e:
-        print(f"Error: {str(e)}")
-
-# Example usage with custom headers
-custom_headers = [
-    "ID", "# Documento", "Nombre", "1er Nombre", "1er Apellido", 
-    "2do Apellido", "Compañía", "Cargo", "Email", "Fecha de Inicio", 
-    "Q1", "Q2", "Q3", "Q4", "Q5",
-    "Q6", "Q7", "Q8", "Q9", "Q10"
-]
-
-extract_specific_columns(
-    input_file="src/conflictos.xls",
-    output_file="tables/conflicts.xlsx",
-    custom_headers=custom_headers
-)
-"@
-}
-
-function createIDScript {
-    Write-Host "🏗️ Creating ID Script" -ForegroundColor $YELLOW
-    
-    Set-Content -Path "models/ids.py" -Value @"
-import pandas as pd
-from pathlib import Path
-import warnings
-
-def process_excel_files(activos_file, retirados_file, output_file, column_names):
-   
-    # Suppress SettingWithCopyWarning
-    warnings.simplefilter(action='ignore', category=pd.errors.SettingWithCopyWarning)
-    
-    try:
-        # Create output directory if needed
-        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
-        
-        # Function to load and standardize data from either file
-        def load_data(file_path, estado_value):
-            # Read Excel file
-            df = pd.read_excel(file_path, header=None, engine='openpyxl')
-            
-            # Validate minimum rows
-            if len(df) < 3:
-                raise ValueError(f"Input file {file_path} has less than 3 rows")
-                
-            # Extract headers and data
-            headers = df.iloc[2].tolist()
-            data = df.iloc[3:].copy()
-            data.columns = headers
-            
-            # Select required columns using .loc to avoid warnings
-            col_indices = {
-                'B': 1, 'I': 8, 'J': 9, 'K': 10,
-                'L': 11, 'O': 14, 'S': 18
-            }
-            
-            # Verify columns exist
-            missing_cols = [col for col, idx in col_indices.items() if idx >= len(headers)]
-            if missing_cols:
-                raise ValueError(f"Missing columns in {file_path}: {missing_cols}")
-            
-            # Create new DataFrame with selected columns to avoid view issues
-            selected_data = pd.DataFrame({
-                column_names['B']: data.iloc[:, col_indices['B']],
-                column_names['I']: data.iloc[:, col_indices['I']],
-                column_names['J']: data.iloc[:, col_indices['J']],
-                column_names['K']: data.iloc[:, col_indices['K']],
-                column_names['L']: data.iloc[:, col_indices['L']],
-                column_names['O']: data.iloc[:, col_indices['O']],
-                column_names['S']: data.iloc[:, col_indices['S']]
-            })
-            
-            # Concatenate name components safely
-            concat_cols = [column_names[col] for col in ['I', 'J', 'K', 'L']]
-            nombres = (
-                selected_data[concat_cols]
-                .fillna('')
-                .astype(str)
-                .apply(lambda x: ' '.join(x).strip(), axis=1)
-                .str.lower()
-                .str.title()
-            )
-            
-            # Create final DataFrame with all columns
-            result = pd.DataFrame({
-                column_names['B']: selected_data[column_names['B']],
-                'Nombre': nombres,
-                column_names['O']: selected_data[column_names['O']],
-                column_names['S']: selected_data[column_names['S']],
-                'Estado': estado_value
-            })
-            
-            return result
-        
-        # Load both datasets
-        df_activos = load_data(activos_file, 'Activo')
-        df_retirados = load_data(retirados_file, 'Retirado')
-        
-        # Combine datasets
-        combined_df = pd.concat([df_activos, df_retirados], ignore_index=True)
-        
-        # Select final output columns
-        output_cols = [
-            column_names['B'],  # # Documento
-            'Nombre',          # Full name
-            column_names['O'],  # Cargo
-            column_names['S'],  # Compañía
-            'Estado'           # Activo/Retirado
-        ]
-        
-        # Save to Excel
-        with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
-            combined_df[output_cols].to_excel(writer, index=False)
-            
-        print(f"Successfully processed and combined files:\n"
-              f"Active employees: {activos_file}\n"
-              f"Retired employees: {retirados_file}\n"
-              f"Output: {output_file}\n"
-              f"Total records: {len(combined_df)} (Active: {len(df_activos)}, Retired: {len(df_retirados)})")
-        
-    except Exception as e:
-        print(f"Error processing files: {str(e)}")
-        raise
-
-if __name__ == "__main__":
-    # Configuration
-    CONFIG = {
-        'activos_file': "src/ACTIVOS.xlsx",      # Current active employees
-        'retirados_file': "src/RETIRADOS.xlsx",  # New retired employees
-        'output_file': "tables/IDS.xlsx",
-        'column_names': {
-            'B': '# Documento',
-            'I': 'Nombre1',
-            'J': 'Nombre2', 
-            'K': 'Nombre3',
-            'L': 'Nombre4',
-            'O': 'Cargo',
-            'S': 'Compañía'
-        }
-    }
-    
-    # Run processing
-    process_excel_files(
-        activos_file=CONFIG['activos_file'],
-        retirados_file=CONFIG['retirados_file'],
-        output_file=CONFIG['output_file'],
-        column_names=CONFIG['column_names']
-    )
-"@
-}
-
-function createIDtrends {
-    Write-Host "🏗️ Creating ID Trends" -ForegroundColor $YELLOW
-    
-    Set-Content -Path "models/idTrends.py" -Value @"
-import pandas as pd
-from pathlib import Path
-
-def merge_trends_data(ids_file, trends_file, output_file):
-    """
-    Merge trends data with employee IDs using first-letter matching:
-    - Keeps all records from trends.xlsx
-    - Adds # Documento from IDS.xlsx
-    - Matches on first letters of Nombre, Cargo, and Compañía
-    """
-    try:
-        # Create output directory if needed
-        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
-        
-        # Read both files
-        df_ids = pd.read_excel(ids_file, engine='openpyxl')
-        df_trends = pd.read_excel(trends_file, engine='openpyxl')
-        
-        # Create first-letter merge keys
-        for df in [df_ids, df_trends]:
-            df['merge_key'] = (
-                df['Nombre'].str[0].str.lower() + '|' +
-                df['Cargo'].str[0].str.lower() + '|' +
-                df['Compañía'].str[0].str.lower()
-            )
-        
-        # Perform left join (keep all trends records)
-        merged_df = pd.merge(
-            left=df_trends,
-            right=df_ids[['merge_key', '# Documento']],
-            how='left',
-            on='merge_key'
-        )
-        
-        # Handle potential duplicates - keep first match
-        merged_df = merged_df.drop_duplicates(subset=df_trends.columns.tolist(), keep='first')
-        
-        # Clean up - drop the merge key and reorder columns
-        merged_df = merged_df.drop(columns=['merge_key'])
-        cols = ['# Documento'] + [col for col in merged_df.columns if col != '# Documento']
-        merged_df = merged_df[cols]
-        
-        # Save to Excel
-        with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
-            merged_df.to_excel(writer, index=False)
-            
-        print(f"Successfully merged files using first-letter matching:\n"
-              f"IDS file: {ids_file}\n"
-              f"Trends file: {trends_file}\n"
-              f"Output: {output_file}\n"
-              f"Total records: {len(merged_df)}\n"
-              f"Records with matched ID: {merged_df['# Documento'].notna().sum()}")
-        
-    except Exception as e:
-        print(f"Error merging files: {str(e)}")
-        raise
-
-if __name__ == "__main__":
-    # Configuration
-    CONFIG = {
-        'ids_file': "tables/IDS.xlsx",  # Current combined file
-        'trends_file': "tables/trends/trends.xlsx",       # New trends data
-        'output_file': "tables/idTrends.xlsx"  # Output file
-    }
-    
-    # Run merging
-    merge_trends_data(
-        ids_file=CONFIG['ids_file'],
-        trends_file=CONFIG['trends_file'],
-        output_file=CONFIG['output_file']
-    )
-"@
-}
-
-function createINtrends {
-    Write-Host "🏗️ Merging Trends/Conflicts" -ForegroundColor $YELLOW
-    
-    Set-Content -Path "models/inTrends.py" -Value @"
-import pandas as pd
-from pathlib import Path
-
-def join_conflicts_data(trends_file, conflicts_file, output_file, how='left'):
-    """
-    Join trends data with conflicts data using different join types:
-    - Uses # Documento as the join key
-    - Keeps all columns from both files
-    - Handles duplicate column names
-    - Converts join key to consistent type (string)
-    - Supports join types: 'left', 'right', 'inner', 'outer'
-    - Saves as inTrends.xlsx
-    """
-    try:
-        # Create output directory if needed
-        Path(output_file).parent.mkdir(parents=True, exist_ok=True)
-        
-        # Read both files
-        df_trends = pd.read_excel(trends_file, engine='openpyxl')
-        df_conflicts = pd.read_excel(conflicts_file, engine='openpyxl')
-        
-        # Check if # Documento exists in both files
-        if '# Documento' not in df_trends.columns or '# Documento' not in df_conflicts.columns:
-            raise ValueError("# Documento column missing in one or both input files")
-        
-        # Convert '# Documento' columns to same type (string)
-        df_trends['# Documento'] = df_trends['# Documento'].astype(str)
-        df_conflicts['# Documento'] = df_conflicts['# Documento'].astype(str)
-        
-        # Perform the join operation
-        joined_df = pd.merge(
-            left=df_trends,
-            right=df_conflicts,
-            how=how,  # Type of join: 'left', 'right', 'inner', 'outer'
-            on='# Documento',
-            suffixes=('_trends', '_conflicts')
-        )
-        
-        # Save to Excel
-        with pd.ExcelWriter(output_file, engine='openpyxl') as writer:
-            joined_df.to_excel(writer, index=False)
-            
-        print(f"Successfully joined files with '{how}' join:\n"
-              f"Trends file: {trends_file}\n"
-              f"Conflicts file: {conflicts_file}\n"
-              f"Output: {output_file}\n"
-              f"Total records: {len(joined_df)}\n"
-              f"Records from trends: {len(df_trends)}\n"
-              f"Records from conflicts: {len(df_conflicts)}\n"
-              f"Join type: {how}")
-        
-    except Exception as e:
-        print(f"Error joining files: {str(e)}")
-        raise
-
-if __name__ == "__main__":
-    # Configuration
-    CONFIG = {
-        'trends_file': "tables/idTrends.xlsx",  # Current trends file
-        'conflicts_file': "tables/conflicts.xlsx",      # Conflicts data
-        'output_file': "tables/inTrends.xlsx",        # Output file
-        'join_type': "left"  # Can be 'left', 'right', 'inner', 'outer'
-    }
-    
-    # Run joining
-    join_conflicts_data(
-        trends_file=CONFIG['trends_file'],
-        conflicts_file=CONFIG['conflicts_file'],
-        output_file=CONFIG['output_file'],
-        how=CONFIG['join_type']
-    )
-"@
-}
-
 function createIndex {
 Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     # html
@@ -1704,7 +1334,22 @@ Write-Host "🏗️ Creating HTML" -ForegroundColor $YELLOW
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>A R P A</title>
-    <link rel="stylesheet" href="static/style.css">
+    <!-- Base styles -->
+    <link rel="stylesheet" href="static/css/base.css">
+    <!-- Layout -->
+    <link rel="stylesheet" href="static/css/layout.css">
+    <!-- Components -->
+    <link rel="stylesheet" href="static/css/components/navbar.css">
+    <link rel="stylesheet" href="static/css/components/tabs.css">
+    <link rel="stylesheet" href="static/css/components/forms.css">
+    <link rel="stylesheet" href="static/css/components/table.css">
+    <link rel="stylesheet" href="static/css/components/modals.css">
+    <link rel="stylesheet" href="static/css/components/buttons.css">
+    <!-- Utilities -->
+    <link rel="stylesheet" href="static/css/utilities.css">
+    <!-- Theme -->
+    <link rel="stylesheet" href="static/css/theme.css">
+    
     <link rel="shortcut icon" href="favicon.png" type="image/x-icon">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css">
@@ -1995,7 +1640,7 @@ body {
 
 .shake {
     animation: shake 0.6s;
-}   
+}
 "@ | Out-File -FilePath "static/css/base.css" -Encoding utf8
 
 # layout.css
@@ -4418,6 +4063,7 @@ function createStructure {
     Write-Host "🏗️ Creating Framework" -ForegroundColor $YELLOW
 
     # Create Python virtual environment
+    python.exe -m pip install --upgrade pip
     python -m venv .venv
     .\.venv\scripts\activate
 
@@ -4430,66 +4076,13 @@ function createStructure {
     $directories = @(
         "src",
         "models",
-        "tables/cats",
-        "tables/nets",
-        "tables/trends",
+        "templates",
         "static/css/components"
 
     )
     foreach ($dir in $directories) {
         New-Item -Path $dir -ItemType Directory -Force
     }
-
-}
-
-function migratoDjango {
-    Write-Host "🏗️ Creating Django Migration" -ForegroundColor $YELLOW
-
-# Install Python packages
-python -m pip install django whitenoise django-bootstrap-v5
-
-# Start Django project
-django-admin startproject arpa
-
-# Change directory
-cd arpa
-
-# Start new app
-python manage.py startapp bienesyrentas
-
-# Create bienesyrentas views.py
-@"
-from django.shortcuts import render
-from django.http import HttpResponse
-
-def bienesyrentas(request):
-    return HttpResponse("Hello world!")
-"@ | Out-File -FilePath "bienesyrentas/views.py" -Encoding utf8
-
-# Create bienesyrentas urls.py
-@"
-from django.urls import path
-from . import views
-
-urlpatterns = [
-    path('', views.bienesyrentas, name='home'),  # Add this line for root path
-    path('bienesyrentas/', views.bienesyrentas, name='bienesyrentas'),
-]
-"@ | Out-File -FilePath "bienesyrentas/urls.py" -Encoding utf8
-
-# Create arpa urls.py
-@"
-from django.contrib import admin
-from django.urls import include, path
-
-urlpatterns = [
-    path('bienesyrentas/', include('bienesyrentas.urls')),
-    path('admin/', admin.site.urls),
-    path('', include('bienesyrentas.urls')), 
-]
-"@ | Out-File -FilePath "arpa/urls.py" -Encoding utf8
-
-#python manage.py runserver
 
 }
 
@@ -4503,27 +4096,15 @@ function main {
     createCats
     createNets
     createTrends
-    createIDScript
-    createIDtrends
-    createINtrends
-    createConflictScript
     createApp
     createIndex
 
     #generate periodoBR
     python models/period.py
 
-    #generate Join between trends and conflicts
-    python models/conflicts.py
-    python models/ids.py
-    python models/idTrends.py
-    python models/inTrends.py
-
     Write-Host "🏗️ The framework is set" -ForegroundColor $YELLOW
     Write-Host "🏗️ Opening index.html in browser..." -ForegroundColor $GREEN
     
-    #migratoDjango
-    #cd ..
     python app.py
 
 }
